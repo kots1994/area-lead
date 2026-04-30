@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AreaLead — エリア×業種でアタックリスト自動生成</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">📍</span>
+      <span class="brand-name">AreaLead</span>
+    </div>
+    <span class="brand-sub">エリア × 業種で営業アタックリストを自動生成</span>
+  </header>
+
+  <main class="main">
+    <aside class="sidebar">
+      <h2 class="sidebar-title">検索条件</h2>
+      <form id="search-form" class="form">
+        <label class="field">
+          <span class="field-label">業種</span>
+          <input type="text" id="f-industry" placeholder="例: 物流倉庫 / 不動産仲介 / 採用エージェント">
+        </label>
+        <label class="field">
+          <span class="field-label">エリア</span>
+          <input type="text" id="f-area" placeholder="例: 千葉県印西市 / Shibuya Tokyo">
+        </label>
+        <label class="field">
+          <span class="field-label">キーワード（任意）</span>
+          <input type="text" id="f-keywords" placeholder="例: 3PL ロジスティクス">
+        </label>
+        <div class="row-2">
+          <label class="field">
+            <span class="field-label">言語</span>
+            <select id="f-language">
+              <option value="ja" selected>日本語</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">リージョン</span>
+            <select id="f-region">
+              <option value="JP" selected>JP</option>
+              <option value="US">US</option>
+              <option value="GB">GB</option>
+              <option value="CA">CA</option>
+              <option value="AU">AU</option>
+            </select>
+          </label>
+        </div>
+        <div class="row-2">
+          <label class="field">
+            <span class="field-label">最大件数</span>
+            <input type="number" id="f-max" min="1" max="20" value="20">
+          </label>
+          <label class="field toggle-field">
+            <span class="field-label">サイト情報も補完</span>
+            <input type="checkbox" id="f-enrich" checked>
+          </label>
+        </div>
+        <button type="submit" class="btn-primary" id="btn-search">
+          <span class="btn-spinner" hidden></span>
+          <span class="btn-label">リスト生成</span>
+        </button>
+        <div class="status" id="status"></div>
+      </form>
+    </aside>
+
+    <section class="results">
+      <div class="results-header">
+        <h2 id="results-title">結果</h2>
+        <div class="results-actions">
+          <span class="results-count" id="results-count"></span>
+          <button class="btn-secondary" id="btn-csv" hidden>📥 CSVをダウンロード</button>
+        </div>
+      </div>
+      <div class="results-table-wrap">
+        <table class="results-table" id="results-table">
+          <thead>
+            <tr>
+              <th class="col-name">企業名</th>
+              <th class="col-addr">住所</th>
+              <th class="col-phone">電話</th>
+              <th class="col-web">サイト</th>
+              <th class="col-email">メール</th>
+              <th class="col-contact">問合せフォーム</th>
+              <th class="col-rating">★</th>
+            </tr>
+          </thead>
+          <tbody id="results-body">
+            <tr class="empty"><td colspan="7">左の条件で「リスト生成」を押してください。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>AreaLead v0.1.0 · MVP</span>
+    <span>Google Places API + lightweight scraping</span>
+  </footer>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
