@@ -70,34 +70,6 @@ $("btn-clear-keys")?.addEventListener("click", () => {
   $("api-settings-status").className = "modal-status info";
 });
 
-// ─── Auth ─────────────────────────────────────────────
-let currentUser = null;
-async function ensureLoggedIn() {
-  try {
-    const r = await api("GET", "/api/auth/me");
-    if (r.ok && r.data) { currentUser = r.data; renderUser(); return true; }
-  } catch {}
-  location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
-  return false;
-}
-function renderUser() {
-  if (!currentUser) return;
-  // Add user email + logout next to API settings
-  let menu = document.querySelector(".header-user");
-  if (!menu) {
-    const hp = document.querySelector(".header-plan");
-    if (!hp) return;
-    menu = document.createElement("div");
-    menu.className = "header-user";
-    hp.insertBefore(menu, hp.firstChild);
-  }
-  menu.innerHTML = `<span class="user-email">${escapeHtml(currentUser.email)}</span> <button class="user-logout" id="btn-logout">ログアウト</button>`;
-  $("btn-logout")?.addEventListener("click", async () => {
-    await api("POST", "/api/auth/logout");
-    location.href = "/login.html";
-  });
-}
-
 // ─── Render ───────────────────────────────────────────
 function priorityBadge(p) {
   if (!p || p === "☆☆☆") return '<span class="pri pri-0">☆☆☆</span>';
@@ -201,9 +173,7 @@ btnCsv.addEventListener("click", () => {
   URL.revokeObjectURL(url);
 });
 
-// Init
-(async () => {
-  if (await ensureLoggedIn()) {
-    if (!getStoredKeys().google_maps) setTimeout(openApiSettings, 400);
-  }
+// Init: 初回 API キー未設定なら設定モーダル
+(() => {
+  if (!getStoredKeys().google_maps) setTimeout(openApiSettings, 400);
 })();
