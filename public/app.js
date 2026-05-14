@@ -30,6 +30,49 @@ async function api(method, path, body) {
   return resp.json();
 }
 
+// ─── BYOK key storage ─────────────────────────────────
+const KEY_GOOGLE = "al.key.google";
+const KEY_ANTHROPIC = "al.key.anthropic";
+function getStoredKeys() {
+  return {
+    google_maps: localStorage.getItem(KEY_GOOGLE) || "",
+    anthropic: localStorage.getItem(KEY_ANTHROPIC) || "",
+  };
+}
+
+// ─── API settings modal ───────────────────────────────
+function openApiSettings() {
+  const k = getStoredKeys();
+  $("key-google").value = k.google_maps;
+  $("key-anthropic").value = k.anthropic;
+  $("api-settings-modal").hidden = false;
+  $("api-settings-status").textContent = "";
+  setTimeout(() => $("key-google").focus(), 100);
+}
+function closeApiSettings() { $("api-settings-modal").hidden = true; }
+$("btn-open-api-settings")?.addEventListener("click", openApiSettings);
+$("btn-close-api-settings")?.addEventListener("click", closeApiSettings);
+$("api-settings-modal")?.addEventListener("click", (e) => { if (e.target.id === "api-settings-modal") closeApiSettings(); });
+$("api-settings-form")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const g = $("key-google").value.trim();
+  const a = $("key-anthropic").value.trim();
+  if (g) localStorage.setItem(KEY_GOOGLE, g); else localStorage.removeItem(KEY_GOOGLE);
+  if (a) localStorage.setItem(KEY_ANTHROPIC, a); else localStorage.removeItem(KEY_ANTHROPIC);
+  const st = $("api-settings-status");
+  st.textContent = "✓ 保存しました";
+  st.className = "modal-status success";
+  setTimeout(closeApiSettings, 800);
+});
+$("btn-clear-keys")?.addEventListener("click", () => {
+  localStorage.removeItem(KEY_GOOGLE);
+  localStorage.removeItem(KEY_ANTHROPIC);
+  $("key-google").value = "";
+  $("key-anthropic").value = "";
+  $("api-settings-status").textContent = "クリアしました";
+  $("api-settings-status").className = "modal-status info";
+});
+
 // ─── Auth gate ─────────────────────────────────────────
 let currentUser = null;
 async function ensureLoggedIn() {
@@ -170,7 +213,7 @@ document.querySelectorAll(".ai-style").forEach((b) => {
     $("ai-loading").hidden = false;
     $("ai-result").hidden = true;
     try {
-      const r = await api("POST", "/api/ai/polish", { text, style: currentAiStyle, purpose: "reason" });
+      const r = await api("POST", "/api/ai/polish", { text, style: currentAiStyle, purpose: "reason", apiKeys: getStoredKeys() });
       if (r.ok) {
         $("ai-result-text").value = r.data.polished;
         $("ai-result").hidden = false;
@@ -226,6 +269,12 @@ function renderRows(rows) {
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  const apiKeys = getStoredKeys();
+  if (!apiKeys.google_maps) {
+    setStatus("Google Maps API キーが未設定。右上「⚙️ API設定」から登録してください。", "error");
+    openApiSettings();
+    return;
+  }
   const body = {
     industry: $("f-industry").value.trim(),
     area: $("f-area").value.trim(),
@@ -234,6 +283,7 @@ form.addEventListener("submit", async (e) => {
     region: $("f-region").value,
     max: Number($("f-max").value) || 20,
     enrich: $("f-enrich").checked,
+    apiKeys,
   };
   if (!body.industry && !body.keywords) { setStatus("業種かキーワードを入力してください", "error"); return; }
   if (!body.area) { setStatus("エリアを入力してください", "error"); return; }
@@ -285,9 +335,13 @@ btnCsv.addEventListener("click", () => {
   URL.revokeObjectURL(url);
 });
 
-// Init: ensure logged in then load plan
+// Init: ensure logged in then check API keys
 (async () => {
   if (await ensureLoggedIn()) {
     await loadPlanState();
+    // 初回ユーザーには API キー設定を促す
+    if (!getStoredKeys().google_maps) {
+      setTimeout(openApiSettings, 400);
+    }
   }
 })();

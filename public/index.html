@@ -17,8 +17,7 @@
       </div>
     </div>
     <div class="header-plan">
-      <span id="header-plan-badge" class="header-plan-badge">Free</span>
-      <a href="/plan.html" class="header-plan-link">プラン管理 →</a>
+      <button id="btn-open-api-settings" class="user-logout" title="API設定">⚙️ API設定</button>
     </div>
   </header>
 
@@ -114,7 +113,37 @@
     </section>
   </main>
 
-  <!-- Paywall modal -->
+  <!-- API settings modal -->
+  <div id="api-settings-modal" class="modal-overlay" hidden>
+    <div class="modal-card">
+      <button class="modal-close" id="btn-close-api-settings" aria-label="閉じる">×</button>
+      <h2 class="modal-title">API キー設定</h2>
+      <p class="modal-sub">あなたのキーをブラウザの localStorage にのみ保存します。サーバー側には保存・ログ記録されません。リクエスト時のみ Google / Anthropic に渡ります。</p>
+      <form id="api-settings-form">
+        <label class="field">
+          <span class="field-label">Google Maps API Key <span class="req">必須</span></span>
+          <input type="password" id="key-google" placeholder="AIza..." autocomplete="off">
+          <small class="hint">
+            <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank" rel="noopener">Google Cloud Console</a> で発行 / 「Places API (New)」を有効化
+          </small>
+        </label>
+        <label class="field">
+          <span class="field-label">Anthropic Claude API Key <span class="opt">任意</span></span>
+          <input type="password" id="key-anthropic" placeholder="sk-ant-..." autocomplete="off">
+          <small class="hint">
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic Console</a> で発行 / AI添削に使用
+          </small>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="btn-clear-keys">クリア</button>
+          <button type="submit" class="btn-primary">保存</button>
+        </div>
+        <div class="modal-status" id="api-settings-status"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Paywall modal (no longer used; kept for backward compat) -->
   <div id="paywall-modal" class="modal-overlay" hidden>
     <div class="modal-card">
       <button class="modal-close" id="btn-paywall-close" aria-label="閉じる">×</button>

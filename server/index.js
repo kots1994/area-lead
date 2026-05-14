@@ -143,22 +143,16 @@ app.post("/api/feedback", (req, res) => {
   res.json({ ok: true });
 });
 
-// ─── AI polish ────────────────────────────────────────
+// ─── AI polish (BYOK: ユーザーの Anthropic key) ────────
 app.post("/api/ai/polish", requireLogin, async (req, res) => {
-  const { text = "", style = "polite", purpose = "reason" } = req.body || {};
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return res.status(500).json({ ok: false, error: "AI add-on is not configured" });
+  const { text = "", style = "polite", purpose = "reason", apiKeys = {} } = req.body || {};
+  const key = apiKeys.anthropic || process.env.ANTHROPIC_API_KEY;
+  if (!key) return res.status(400).json({
+    ok: false,
+    error: "Anthropic API キーが必要です。右上「⚙️ API設定」から登録してください。",
+    needApiKey: true,
+  });
   if (!text.trim()) return res.status(400).json({ ok: false, error: "text required" });
-  const plan = getPlanState(req.userId);
-  if (plan.plan === "free") {
-    const today = new Date().toISOString().split("T")[0];
-    global.__aiQuota = global.__aiQuota || {};
-    const k = `${req.userId}_${today}`;
-    global.__aiQuota[k] = (global.__aiQuota[k] || 0) + 1;
-    if (global.__aiQuota[k] > 20) {
-      return res.status(429).json({ ok: false, error: "1日のAI添削上限 (20回) に達しました。Starter以上にアップグレードで無制限。" });
-    }
-  }
   try {
     const out = await polishText({ apiKey: key, text, style, purpose });
     res.json({ ok: true, data: { polished: out } });
@@ -167,24 +161,22 @@ app.post("/api/ai/polish", requireLogin, async (req, res) => {
   }
 });
 
-// ─── Main search (require login + quota enforcement) ───
+// ─── Main search (require login; BYOK: ユーザーの Google Maps key 必須) ───
 app.post("/api/search", requireLogin, async (req, res) => {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) return res.status(500).json({ ok: false, error: "GOOGLE_MAPS_API_KEY not set on server" });
+  const { apiKeys = {} } = req.body || {};
+  const apiKey = apiKeys.google_maps || process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) return res.status(400).json({
+    ok: false,
+    error: "Google Maps API キーが必要です。右上「⚙️ API設定」から登録してください。",
+    needApiKey: true,
+  });
 
   try {
     const { industry = "", area = "", keywords = "", language = "ja", region = "JP", max = 20, enrich = true } = req.body || {};
     if (!industry && !keywords) return res.status(400).json({ ok: false, error: "industry or keywords required" });
     if (!area) return res.status(400).json({ ok: false, error: "area required" });
 
-    const planState = getPlanState(req.userId);
-    if (planState.blocked) {
-      return res.status(402).json({
-        ok: false,
-        error: "今月の無料枠を使い切りました。プランをアップグレードしてください。",
-        planState,
-      });
-    }
+    // BYOK: quota は撤廃（ユーザーが自分で API 課金を負担するため）
 
     const query = [industry, keywords, area].filter(Boolean).join(" ").trim();
     const places = await textSearch({
