@@ -1,62 +1,42 @@
-// Google Places API (New) wrapper
-// Docs: https://developers.google.com/maps/documentation/places/web-service/text-search
+// Google Places API (New) wrapper — BYOK version
 
-const PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
-const PLACES_NEARBY_SEARCH_URL = "https://places.googleapis.com/v1/places:searchNearby";
+const TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 
-/**
- * Text search by query (e.g., "logistics warehouse near Inzai-shi")
- * @param {Object} opts
- * @param {string} opts.query — free-text query (industry + location combined)
- * @param {string} opts.languageCode — "ja" / "en"
- * @param {number} opts.maxResults — up to 20 per page (API limit)
- * @param {string} opts.regionCode — "JP" / "US" / "GB" etc.
- * @param {string} opts.apiKey
- */
-export async function textSearch({ query, languageCode = "ja", maxResults = 20, regionCode, apiKey }) {
-  const fieldMask = [
-    "places.id",
-    "places.displayName",
-    "places.formattedAddress",
-    "places.nationalPhoneNumber",
-    "places.internationalPhoneNumber",
-    "places.websiteUri",
-    "places.googleMapsUri",
-    "places.types",
-    "places.businessStatus",
-    "places.rating",
-    "places.userRatingCount",
-    "places.priceLevel",
-    "places.location",
-  ].join(",");
+const FIELD_MASK = [
+  "places.id",
+  "places.displayName",
+  "places.formattedAddress",
+  "places.nationalPhoneNumber",
+  "places.internationalPhoneNumber",
+  "places.websiteUri",
+  "places.googleMapsUri",
+  "places.types",
+  "places.businessStatus",
+  "places.rating",
+  "places.userRatingCount",
+  "places.location",
+].join(",");
 
-  const body = {
-    textQuery: query,
-    languageCode,
-    pageSize: Math.min(maxResults, 20),
-  };
+async function textSearchOne({ query, languageCode, regionCode, apiKey, pageSize = 20 }) {
+  const body = { textQuery: query, languageCode, pageSize };
   if (regionCode) body.regionCode = regionCode;
-
-  const resp = await fetch(PLACES_TEXT_SEARCH_URL, {
+  const resp = await fetch(TEXT_SEARCH_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": fieldMask,
+      "X-Goog-FieldMask": FIELD_MASK,
     },
     body: JSON.stringify(body),
   });
   if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`Places API error ${resp.status}: ${errText.slice(0, 300)}`);
+    const t = await resp.text();
+    throw new Error(`Places API ${resp.status}: ${t.slice(0, 200)}`);
   }
   const data = await resp.json();
   return data.places || [];
 }
 
-/**
- * Normalize a Place result to flat row used by the rest of the pipeline.
- */
 export function normalizePlace(p) {
   return {
     place_id: p.id || "",
@@ -72,4 +52,32 @@ export function normalizePlace(p) {
     lat: p.location?.latitude ?? null,
     lng: p.location?.longitude ?? null,
   };
+}
+
+/**
+ * Run multiple queries (keyword × area combinations) and dedupe.
+ * Optionally filter by company-name keywords.
+ */
+export async function searchTargets({ queries, languageCode = "ja", regionCode = "JP", apiKey, companyKeywords }) {
+  const results = new Map();
+  for (const q of queries) {
+    try {
+      const places = await textSearchOne({ query: q, languageCode, regionCode, apiKey });
+      for (const p of places) {
+        if (!p.id) continue;
+        if (!results.has(p.id)) results.set(p.id, p);
+      }
+    } catch (e) {
+      console.warn(`[Places] query failed: "${q}" → ${e.message}`);
+    }
+  }
+  const all = [...results.values()].map(normalizePlace);
+  if (companyKeywords && companyKeywords.length > 0) {
+    const lowered = companyKeywords.map((k) => k.toLowerCase());
+    return all.filter((r) => {
+      const nl = (r.name || "").toLowerCase();
+      return lowered.some((k) => nl.includes(k));
+    });
+  }
+  return all;
 }

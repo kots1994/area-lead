@@ -7,14 +7,14 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { textSearch, normalizePlace } from "./lib/places.js";
+import { searchTargets } from "./lib/places.js";
 import { enrichRows } from "./lib/scraper.js";
 import { rowsToCsv } from "./lib/csv.js";
 import {
   ensureUser, getPlanState, consumeRows, applyReferralCode,
   getReferralShareInfo, getUpgradeMailto, PLANS, UPGRADE_EMAIL,
 } from "./lib/plan.js";
-import { polishText } from "./lib/claude.js";
+import { enrichWithClaude } from "./lib/claude.js";
 import {
   registerAccount, loginAccount, createSession, getSession, destroySession,
 } from "./lib/auth.js";
@@ -143,27 +143,22 @@ app.post("/api/feedback", (req, res) => {
   res.json({ ok: true });
 });
 
-// ─── AI polish (BYOK: ユーザーの Anthropic key) ────────
-app.post("/api/ai/polish", requireLogin, async (req, res) => {
-  const { text = "", style = "polite", purpose = "reason", apiKeys = {} } = req.body || {};
-  const key = apiKeys.anthropic || process.env.ANTHROPIC_API_KEY;
-  if (!key) return res.status(400).json({
-    ok: false,
-    error: "Anthropic API キーが必要です。右上「⚙️ API設定」から登録してください。",
-    needApiKey: true,
-  });
-  if (!text.trim()) return res.status(400).json({ ok: false, error: "text required" });
-  try {
-    const out = await polishText({ apiKey: key, text, style, purpose });
-    res.json({ ok: true, data: { polished: out } });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
+// AI添削 (polishText) は v0.2 で撤去 — Claude API は enrichWithClaude (優先度判定) で使用
 
-// ─── Main search (require login; BYOK: ユーザーの Google Maps key 必須) ───
-app.post("/api/search", requireLogin, async (req, res) => {
-  const { apiKeys = {} } = req.body || {};
+// 倉庫テナント向けデフォルトキーワード
+const DEFAULT_KEYWORDS = [
+  "運輸", "物流", "倉庫", "EC配送", "越境EC", "3PL", "ロジスティクス", "運送",
+];
+const COMPANY_NAME_KEYWORDS = [
+  "物流", "ロジスティクス", "運輸", "運送", "倉庫", "3PL",
+  "logistics", "transport", "warehouse", "delivery",
+  "配送", "通運", "急便", "エクスプレス", "フルフィルメント",
+  "EC", "越境", "貿易", "freight", "cargo",
+];
+
+// ─── Main: テナント候補リスト生成 (BYOK + 多キーワード×エリア + Claude判定) ───
+app.post("/api/generate", requireLogin, async (req, res) => {
+  const { apiKeys = {}, property = {}, keywords, options = {} } = req.body || {};
   const apiKey = apiKeys.google_maps || process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) return res.status(400).json({
     ok: false,
@@ -172,44 +167,86 @@ app.post("/api/search", requireLogin, async (req, res) => {
   });
 
   try {
-    const { industry = "", area = "", keywords = "", language = "ja", region = "JP", max = 20, enrich = true } = req.body || {};
-    if (!industry && !keywords) return res.status(400).json({ ok: false, error: "industry or keywords required" });
-    if (!area) return res.status(400).json({ ok: false, error: "area required" });
+    if (!property.name) return res.status(400).json({ ok: false, error: "物件名が必要です" });
+    if (!Array.isArray(property.areas) || property.areas.length === 0) {
+      return res.status(400).json({ ok: false, error: "対象エリアを1つ以上入力してください" });
+    }
 
-    // BYOK: quota は撤廃（ユーザーが自分で API 課金を負担するため）
+    const language = options.language || "ja";
+    const region = options.region || "JP";
+    const enabledKeywords = (keywords && keywords.length > 0) ? keywords : DEFAULT_KEYWORDS;
+    const areas = property.areas;
 
-    const query = [industry, keywords, area].filter(Boolean).join(" ").trim();
-    const places = await textSearch({
-      query, languageCode: language, regionCode: region,
-      maxResults: Math.min(Number(max) || 20, 20),
+    // Build queries: each keyword × (global + each area)
+    const queries = [];
+    for (const kw of enabledKeywords) {
+      queries.push(kw);
+      for (const area of areas) queries.push(`${area} ${kw}`);
+    }
+
+    // Phase 1: Places search
+    let places = await searchTargets({
+      queries,
+      languageCode: language,
+      regionCode: region,
       apiKey,
+      companyKeywords: COMPANY_NAME_KEYWORDS,
     });
-    const rows = places.map(normalizePlace);
 
-    let enrichedRows = rows;
-    if (enrich) enrichedRows = await enrichRows(rows, { concurrency: 4 });
+    const MAX_TO_ENRICH = 60;
+    let placesForEnrich = places.slice(0, MAX_TO_ENRICH);
 
-    consumeRows(req.userId, enrichedRows.length);
+    // Phase 2: Claude enrichment (optional)
+    let enriched = placesForEnrich;
+    let usedClaude = false;
+    if (options.enrichWithAi !== false && apiKeys.anthropic && placesForEnrich.length > 0) {
+      try {
+        enriched = await enrichWithClaude({
+          apiKey: apiKeys.anthropic,
+          property: { name: property.name, address: property.address, areas, hook: property.hook },
+          rows: placesForEnrich,
+          batchSize: 25,
+        });
+        usedClaude = true;
+      } catch (e) {
+        console.warn("[Claude] enrich failed:", e.message);
+      }
+    }
+
+    // Phase 3: website scraping
+    if (options.scrape !== false) {
+      enriched = await enrichRows(enriched, { concurrency: 6 });
+    }
+
+    consumeRows(req.userId, enriched.length);
 
     const columns = [
-      "name", "address", "phone", "website", "emails", "contact_url",
-      "has_inquiry_form", "meta_description", "rating", "review_count",
-      "types", "business_status", "maps_url", "lat", "lng", "place_id",
+      "priority", "revenue_rank", "category",
+      "name", "address", "phone", "website",
+      "emails", "contact_url", "has_inquiry_form",
+      "reason", "estimated_department",
+      "rating", "review_count",
+      "chinese_or_ec_emerging",
+      "maps_url", "types", "business_status",
+      "meta_description", "lat", "lng", "place_id",
       "enrichment_status",
     ];
-    const csv = rowsToCsv(enrichedRows, columns);
+    const csv = rowsToCsv(enriched, columns);
     const csvBase64 = Buffer.from(csv, "utf-8").toString("base64");
 
     res.json({
       ok: true,
-      query,
-      count: enrichedRows.length,
-      rows: enrichedRows,
+      property: property.name,
+      counts: {
+        found: places.length,
+        enriched_with_claude: usedClaude ? enriched.length : 0,
+        returned: enriched.length,
+      },
+      rows: enriched,
       csv_base64: csvBase64,
-      planState: getPlanState(req.userId),
     });
   } catch (e) {
-    console.error("[AreaLead] search error", e);
+    console.error("[AreaLead] generate error", e);
     res.status(500).json({ ok: false, error: e.message || String(e) });
   }
 });
