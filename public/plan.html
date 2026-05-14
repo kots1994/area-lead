@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>プラン管理 — AreaLead</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="plan-page">
+<div class="plan-container">
+  <header class="plan-header">
+    <a href="/" class="plan-back">← ダッシュボードに戻る</a>
+    <h1>プラン管理</h1>
+  </header>
+
+  <!-- Current plan -->
+  <section class="plan-card-big" id="current-plan-card">
+    <div class="plan-card-head">
+      <div>
+        <div class="plan-card-label">現在のプラン</div>
+        <h2 id="current-plan-name">読み込み中...</h2>
+        <div class="plan-card-meta" id="current-plan-meta"></div>
+      </div>
+      <div class="plan-card-status" id="plan-status-pill"></div>
+    </div>
+    <div class="plan-card-quota">
+      <div class="quota-row">
+        <span>今月の使用量</span>
+        <strong id="usage-stat">0 / 50 行</strong>
+      </div>
+      <div class="quota-bar"><div id="usage-bar" class="quota-bar-fill"></div></div>
+    </div>
+    <div class="plan-card-actions" id="plan-card-actions"></div>
+  </section>
+
+  <!-- Pricing table -->
+  <section class="pricing-table">
+    <h3>プラン比較</h3>
+    <div class="pricing-grid">
+      <div class="price-tier" data-plan="free">
+        <div class="tier-name">Free</div>
+        <div class="tier-price">¥0</div>
+        <ul>
+          <li>50行/月</li>
+          <li>基本機能のみ</li>
+          <li>AI添削 1日20回</li>
+        </ul>
+        <button class="btn-secondary" disabled>現在のプラン</button>
+      </div>
+      <div class="price-tier" data-plan="starter">
+        <div class="tier-name">Starter</div>
+        <div class="tier-price">¥2,980<small>/月</small></div>
+        <ul>
+          <li>1,000行/月</li>
+          <li>並列スクレイピング</li>
+          <li>多リージョン</li>
+          <li>メールサポート</li>
+        </ul>
+        <button class="btn-primary" data-checkout="starter">Starterにする</button>
+      </div>
+      <div class="price-tier featured" data-plan="pro">
+        <div class="featured-badge">最もコスパが良い</div>
+        <div class="tier-name">Pro</div>
+        <div class="tier-price">¥9,800<small>/月</small></div>
+        <ul>
+          <li>10,000行/月</li>
+          <li>AI 添削 無制限</li>
+          <li>優先サポート</li>
+          <li>近日: Sheets / Slack連携</li>
+        </ul>
+        <button class="btn-primary" data-checkout="pro">Proにする</button>
+      </div>
+      <div class="price-tier" data-plan="enterprise">
+        <div class="tier-name">Enterprise</div>
+        <div class="tier-price">お問合せ</div>
+        <ul>
+          <li>無制限</li>
+          <li>専用APIキー</li>
+          <li>SLA保証</li>
+          <li>専任サポート</li>
+        </ul>
+        <a class="btn-secondary" href="mailto:makotoejima@gmail.com">問い合わせ</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Referral -->
+  <section class="referral-section">
+    <h3>🎁 友だち招待プログラム</h3>
+    <p class="referral-desc">
+      あなたのコードで友だちが Pro 登録すると、<strong>双方が1ヶ月無料</strong>。
+      招待された側はFree枠が<strong>+100行</strong>。
+    </p>
+    <div class="referral-code-row">
+      <span>あなたのコード</span>
+      <code id="ref-code">—</code>
+      <button id="ref-copy" class="btn-secondary">コピー</button>
+    </div>
+    <div class="referral-actions">
+      <button id="ref-share-text" class="btn-secondary">招待文をコピー</button>
+      <button id="ref-share-x" class="btn-secondary">𝕏 でシェア</button>
+    </div>
+    <div class="referral-stats">
+      <span>招待発送: <strong id="ref-sent">0</strong></span>
+      <span>Pro転換: <strong id="ref-converted">0</strong></span>
+      <span>獲得月数: <strong id="ref-rewards">0</strong></span>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-left">
+      <a href="/">トップ</a>
+      <a href="/landing/privacy.html">プライバシー</a>
+      <a href="/landing/tokushoho.html">特定商取引法</a>
+      <a href="mailto:makotoejima@gmail.com">お問い合わせ</a>
+    </div>
+    <div class="footer-right">v0.2.0</div>
+  </footer>
+</div>
+
+<script src="/plan.js"></script>
+</body>
+</html>

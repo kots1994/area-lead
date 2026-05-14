@@ -1,7 +1,7 @@
 {
   "name": "area-lead",
-  "version": "0.1.0",
-  "description": "エリア×業種で営業アタックリストを自動生成するSaaS",
+  "version": "0.2.0",
+  "description": "エリア×業種で営業アタックリストを自動生成するSaaS。プラン制 (Free/Starter/Pro/Enterprise)、Stripe 課金、招待プログラム、AI 添削、フィードバック収集を内包。",
   "main": "server/index.js",
   "type": "module",
   "scripts": {
@@ -12,6 +12,8 @@
     "express": "^4.21.2",
     "cors": "^2.8.5",
     "cheerio": "^1.0.0",
+    "cookie-parser": "^1.4.7",
+    "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7"
   },
   "engines": { "node": ">=20" },

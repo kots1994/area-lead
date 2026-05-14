@@ -11,9 +11,15 @@
   <header class="topbar">
     <div class="brand">
       <span class="brand-mark">📍</span>
-      <span class="brand-name">AreaLead</span>
+      <div>
+        <div class="brand-name">AreaLead</div>
+        <div class="brand-sub">エリア × 業種で営業アタックリストを自動生成</div>
+      </div>
     </div>
-    <span class="brand-sub">エリア × 業種で営業アタックリストを自動生成</span>
+    <div class="header-plan">
+      <span id="header-plan-badge" class="header-plan-badge">Free</span>
+      <a href="/plan.html" class="header-plan-link">プラン管理 →</a>
+    </div>
   </header>
 
   <main class="main">
@@ -67,6 +73,16 @@
         </button>
         <div class="status" id="status"></div>
       </form>
+
+      <!-- Quota meter -->
+      <div class="quota-meter" id="quota-meter" hidden>
+        <div class="quota-row">
+          <span class="quota-label">今月の利用量</span>
+          <span class="quota-value" id="quota-value">0 / 50</span>
+        </div>
+        <div class="quota-bar"><div id="quota-bar-fill" class="quota-bar-fill"></div></div>
+        <a href="/plan.html" class="quota-upgrade-link" id="quota-upgrade-link" hidden>📈 プランをアップグレード</a>
+      </div>
     </aside>
 
     <section class="results">
@@ -86,7 +102,7 @@
               <th class="col-phone">電話</th>
               <th class="col-web">サイト</th>
               <th class="col-email">メール</th>
-              <th class="col-contact">問合せフォーム</th>
+              <th class="col-contact">問合せ</th>
               <th class="col-rating">★</th>
             </tr>
           </thead>
@@ -98,12 +114,131 @@
     </section>
   </main>
 
+  <!-- Paywall modal -->
+  <div id="paywall-modal" class="modal-overlay" hidden>
+    <div class="modal-card">
+      <button class="modal-close" id="btn-paywall-close" aria-label="閉じる">×</button>
+      <h2 class="modal-title">今月の無料枠を使い切りました</h2>
+      <p class="modal-sub">Starter プランで <strong>1,000行/月</strong>、Pro プランで <strong>10,000行/月</strong> に。</p>
+      <div class="pricing-mini">
+        <div class="price-card-mini">
+          <div class="price-name">Starter</div>
+          <div class="price-amount">¥2,980<small>/月</small></div>
+          <ul>
+            <li>1,000行/月</li>
+            <li>並列スクレイピング</li>
+            <li>メールサポート</li>
+          </ul>
+          <button class="btn-primary modal-cta" data-plan="starter">Starterにする</button>
+        </div>
+        <div class="price-card-mini featured">
+          <div class="price-name">Pro</div>
+          <div class="price-amount">¥9,800<small>/月</small></div>
+          <ul>
+            <li>10,000行/月</li>
+            <li>AI 添削 無制限</li>
+            <li>優先サポート</li>
+          </ul>
+          <button class="btn-primary modal-cta" data-plan="pro">Proにする</button>
+        </div>
+      </div>
+      <button id="btn-have-referral" class="ghost-link">招待コードを持っています</button>
+      <div id="referral-input-row" class="referral-input-row" hidden>
+        <input id="referral-input" type="text" placeholder="例: A1B2C3D4" maxlength="20" autocapitalize="characters">
+        <button id="btn-apply-referral" class="btn-secondary">適用</button>
+      </div>
+      <div id="referral-feedback" class="referral-feedback"></div>
+    </div>
+  </div>
+
+  <!-- AI polish modal -->
+  <div id="ai-modal" class="modal-overlay" hidden>
+    <div class="modal-card">
+      <button class="modal-close" id="btn-ai-close" aria-label="閉じる">×</button>
+      <h2 class="modal-title">AI 添削</h2>
+      <p class="modal-sub">候補理由の文章を AI が添削します。スタイルを選んでください。</p>
+      <div class="ai-style-row">
+        <button class="ai-style" data-style="polite">丁寧に</button>
+        <button class="ai-style" data-style="concise">簡潔に</button>
+        <button class="ai-style" data-style="friendly">親しみやすく</button>
+      </div>
+      <textarea id="ai-input" class="ai-input" rows="4" placeholder="添削したい文章を入力 or ペースト"></textarea>
+      <div id="ai-loading" class="ai-loading" hidden>AI添削中…</div>
+      <div id="ai-result" class="ai-result" hidden>
+        <div class="ai-result-label">添削後</div>
+        <textarea id="ai-result-text" class="ai-result-text" rows="6" readonly></textarea>
+        <div class="ai-result-actions">
+          <button id="btn-ai-copy" class="btn-primary">コピー</button>
+          <button id="btn-ai-cancel" class="btn-secondary">閉じる</button>
+        </div>
+      </div>
+      <p class="ai-quota-note">Free: 1日20回まで / Starter以上は無制限</p>
+    </div>
+  </div>
+
+  <!-- Feedback FAB -->
+  <button id="feedback-fab" class="feedback-fab" type="button" aria-label="フィードバックを送る">
+    <span class="feedback-fab-icon">💬</span>
+    <span class="feedback-fab-label">フィードバック</span>
+  </button>
+
+  <!-- Feedback modal -->
+  <div id="feedback-modal" class="modal-overlay" hidden>
+    <div class="modal-card">
+      <button class="modal-close" id="btn-feedback-close" aria-label="閉じる">×</button>
+      <h2 class="modal-title">フィードバック</h2>
+      <p class="modal-sub">改善点・バグ報告・機能リクエスト、なんでもどうぞ。</p>
+      <form id="feedback-form">
+        <label class="field">
+          <span class="field-label">カテゴリ</span>
+          <select id="feedback-category">
+            <option value="bug">🐛 バグ</option>
+            <option value="feature">💡 機能リクエスト</option>
+            <option value="praise">🎉 褒める</option>
+            <option value="general" selected>📝 その他</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="field-label">メッセージ <span class="req">必須</span></span>
+          <textarea id="feedback-message" rows="4" required placeholder="気になったこと、欲しい機能、感想..."></textarea>
+        </label>
+        <label class="field">
+          <span class="field-label">メールアドレス（任意・返信先）</span>
+          <input type="email" id="feedback-email" placeholder="返信が必要なら入力">
+        </label>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">送信</button>
+        </div>
+        <div class="modal-status" id="feedback-status"></div>
+      </form>
+    </div>
+  </div>
+
   <footer class="footer">
-    <span>AreaLead v0.1.0 · MVP</span>
-    <span>Google Places API + lightweight scraping</span>
+    <div class="footer-left">
+      <a href="/landing/index.html">トップ</a>
+      <a href="/plan.html">プラン</a>
+      <a href="/landing/privacy.html">プライバシー</a>
+      <a href="/landing/tokushoho.html">特定商取引法</a>
+      <a href="mailto:makotoejima@gmail.com">お問い合わせ</a>
+    </div>
+    <div class="footer-right">v0.2.0</div>
   </footer>
+
+  <!-- Dev panel -->
+  <details id="dev-panel" class="dev-panel" hidden>
+    <summary>テストパネル（開発者用）</summary>
+    <div class="dev-panel-grid">
+      <button class="dev-btn" data-mode="free">① Free</button>
+      <button class="dev-btn" data-mode="starter">② Starter</button>
+      <button class="dev-btn" data-mode="pro">③ Pro</button>
+      <button class="dev-btn" data-mode="blocked">④ Free quota 切れ</button>
+      <button class="dev-btn" data-mode="cancelled">⑤ 解約済 (期間末まで)</button>
+    </div>
+  </details>
 </div>
 
 <script src="/app.js"></script>
+<script src="/feedback.js"></script>
 </body>
 </html>
