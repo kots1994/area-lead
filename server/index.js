@@ -4,6 +4,8 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
+import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { searchTargets } from "./lib/places.js";
@@ -14,9 +16,50 @@ import { enrichWithClaude } from "./lib/claude.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
 
+const PASSWORD = process.env.SITE_PASSWORD || "shun12345";
+const COOKIE_SECRET = process.env.COOKIE_SECRET || "arealead-secret-v1";
+const COOKIE_NAME = "al_auth";
+
+function makeToken(pw) {
+  return crypto.createHmac("sha256", COOKIE_SECRET).update(pw).digest("hex");
+}
+const VALID_TOKEN = makeToken(PASSWORD);
+
+function requireAuth(req, res, next) {
+  const token = req.cookies?.[COOKIE_NAME];
+  if (token === VALID_TOKEN) return next();
+  // API requests → 401
+  if (req.path.startsWith("/api/")) {
+    return res.status(401).json({ ok: false, error: "unauthorized" });
+  }
+  // Static assets → pass through (css/js needed for login page)
+  if (/\.(css|js|png|ico|woff2?)$/.test(req.path)) return next();
+  // Login page itself → pass through
+  if (req.path === "/login" || req.path === "/login.html") return next();
+  // Everything else → redirect to login
+  res.redirect("/login.html");
+}
+
 const app = express();
 app.use(cors({ credentials: true }));
+app.use(cookieParser());
 app.use(express.json({ limit: "100kb" }));
+
+// Login endpoint (before auth middleware)
+app.post("/api/login", (req, res) => {
+  const { password } = req.body || {};
+  if (password === PASSWORD) {
+    res.cookie(COOKIE_NAME, VALID_TOKEN, {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+    return res.json({ ok: true });
+  }
+  res.status(401).json({ ok: false });
+});
+
+app.use(requireAuth);
 app.use(express.static(PUBLIC_DIR));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, version: "0.2.0" }));

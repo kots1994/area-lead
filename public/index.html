@@ -137,53 +137,11 @@
     </div>
   </div>
 
-  <!-- Feedback FAB -->
-  <button id="feedback-fab" class="feedback-fab" type="button" aria-label="フィードバックを送る">
-    <span class="feedback-fab-icon">💬</span>
-    <span class="feedback-fab-label">フィードバック</span>
-  </button>
-
-  <!-- Feedback modal -->
-  <div id="feedback-modal" class="modal-overlay" hidden>
-    <div class="modal-card">
-      <button class="modal-close" id="btn-feedback-close" aria-label="閉じる">×</button>
-      <h2 class="modal-title">フィードバック</h2>
-      <form id="feedback-form">
-        <label class="field">
-          <span class="field-label">カテゴリ</span>
-          <select id="feedback-category">
-            <option value="bug">🐛 バグ</option>
-            <option value="feature">💡 機能リクエスト</option>
-            <option value="praise">🎉 褒める</option>
-            <option value="general" selected>📝 その他</option>
-          </select>
-        </label>
-        <label class="field">
-          <span class="field-label">メッセージ <span class="req">必須</span></span>
-          <textarea id="feedback-message" rows="4" required></textarea>
-        </label>
-        <label class="field">
-          <span class="field-label">返信先メール（任意）</span>
-          <input type="email" id="feedback-email">
-        </label>
-        <div class="modal-actions">
-          <button type="submit" class="btn-primary">送信</button>
-        </div>
-        <div class="modal-status" id="feedback-status"></div>
-      </form>
-    </div>
-  </div>
-
   <footer class="footer">
-    <div class="footer-left">
-      <a href="/landing/privacy.html">プライバシー</a>
-      <a href="mailto:makotoejima@gmail.com">お問い合わせ</a>
-    </div>
     <div class="footer-right">v0.2.0 · BYOK</div>
   </footer>
 </div>
 
 <script src="/app.js"></script>
-<script src="/feedback.js"></script>
 </body>
 </html>
