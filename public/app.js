@@ -147,7 +147,15 @@ form.addEventListener("submit", async (e) => {
       throw new Error(data.error || "unknown error");
     }
     renderRows(data.rows);
-    resultsCount.textContent = `${data.counts.returned}社（Claude評価: ${data.counts.enriched_with_claude}社 / 元データ ${data.counts.found}社）`;
+    let countText = `${data.counts.returned}社（Claude評価: ${data.counts.enriched_with_claude}社 / 元データ ${data.counts.found}社）`;
+    if (data.claude_usage) {
+      const u = data.claude_usage;
+      const costStr = u.cost_usd < 0.001
+        ? `$${(u.cost_usd * 1000).toFixed(2)}m`
+        : `$${u.cost_usd.toFixed(4)}`;
+      countText += ` ― Claude API: ${costStr}（≈¥${u.cost_jpy} / in:${u.input_tokens.toLocaleString()} out:${u.output_tokens.toLocaleString()} tokens）`;
+    }
+    resultsCount.textContent = countText;
     lastCsvBase64 = data.csv_base64;
     lastProperty = data.property;
     btnCsv.hidden = false;

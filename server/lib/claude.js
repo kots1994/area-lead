@@ -40,6 +40,10 @@ JSON配列のみ返してください。コードフェンスや前置きは不�
 `;
 }
 
+// claude-sonnet-4-5 pricing (USD per token)
+const PRICE_INPUT  = 3    / 1_000_000;  // $3/MTok
+const PRICE_OUTPUT = 15   / 1_000_000;  // $15/MTok
+
 async function callClaude({ apiKey, prompt }) {
   const body = {
     model: MODEL,
@@ -63,7 +67,10 @@ async function callClaude({ apiKey, prompt }) {
         throw new Error(`Anthropic ${resp.status}: ${t.slice(0, 250)}`);
       }
       const data = await resp.json();
-      return data.content?.[0]?.text || "";
+      return {
+        text: data.content?.[0]?.text || "",
+        usage: data.usage || {},
+      };
     } catch (e) {
       lastErr = e;
       if (attempt < MAX_RETRIES) {
@@ -97,13 +104,17 @@ function parseJsonArray(text) {
  */
 export async function enrichWithClaude({ apiKey, property, rows, batchSize = 25, onProgress }) {
   const out = [];
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
     const prompt = buildPrompt({ property, rows: batch });
     let answers = [];
     try {
-      const text = await callClaude({ apiKey, prompt });
+      const { text, usage } = await callClaude({ apiKey, prompt });
       answers = parseJsonArray(text);
+      totalInputTokens  += usage.input_tokens  || 0;
+      totalOutputTokens += usage.output_tokens || 0;
     } catch (e) {
       console.warn(`[Claude] batch ${i} failed: ${e.message}`);
     }
@@ -124,5 +135,15 @@ export async function enrichWithClaude({ apiKey, property, rows, batchSize = 25,
   // Sort by priority (★★★ first)
   const rank = { "★★★": 3, "★★☆": 2, "★☆☆": 1, "☆☆☆": 0 };
   out.sort((a, b) => (rank[b.priority] || 0) - (rank[a.priority] || 0));
-  return out;
+
+  const costUsd = totalInputTokens * PRICE_INPUT + totalOutputTokens * PRICE_OUTPUT;
+  return {
+    rows: out,
+    claudeUsage: {
+      input_tokens: totalInputTokens,
+      output_tokens: totalOutputTokens,
+      cost_usd: costUsd,
+      cost_jpy: Math.round(costUsd * 150), // 参考: 1USD≈150JPY
+    },
+  };
 }

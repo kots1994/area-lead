@@ -67,14 +67,17 @@ app.post("/api/generate", async (req, res) => {
 
     let enriched = placesForEnrich;
     let usedClaude = false;
+    let claudeUsage = null;
     if (options.enrichWithAi !== false && apiKeys.anthropic && placesForEnrich.length > 0) {
       try {
-        enriched = await enrichWithClaude({
+        const result = await enrichWithClaude({
           apiKey: apiKeys.anthropic,
           property: { name: property.name, address: property.address, areas, hook: property.hook },
           rows: placesForEnrich,
           batchSize: 25,
         });
+        enriched = result.rows;
+        claudeUsage = result.claudeUsage;
         usedClaude = true;
       } catch (e) {
         console.warn("[Claude] enrich failed:", e.message);
@@ -106,6 +109,7 @@ app.post("/api/generate", async (req, res) => {
         enriched_with_claude: usedClaude ? enriched.length : 0,
         returned: enriched.length,
       },
+      claude_usage: claudeUsage,
       rows: enriched,
       csv_base64: csvBase64,
     });
