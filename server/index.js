@@ -104,6 +104,8 @@ app.post("/api/generate", async (req, res) => {
       queries, languageCode: language, regionCode: region,
       apiKey, companyKeywords: COMPANY_NAME_KEYWORDS,
     });
+    const mapsUsage = places._mapsUsage || null;
+    delete places._mapsUsage;
 
     const MAX_TO_ENRICH = 60;
     let placesForEnrich = places.slice(0, MAX_TO_ENRICH);
@@ -152,6 +154,7 @@ app.post("/api/generate", async (req, res) => {
         enriched_with_claude: usedClaude ? enriched.length : 0,
         returned: enriched.length,
       },
+      maps_usage: mapsUsage,
       claude_usage: claudeUsage,
       rows: enriched,
       csv_base64: csvBase64,

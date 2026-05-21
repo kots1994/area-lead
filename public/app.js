@@ -147,14 +147,20 @@ form.addEventListener("submit", async (e) => {
       throw new Error(data.error || "unknown error");
     }
     renderRows(data.rows);
-    let countText = `${data.counts.returned}社（Claude評価: ${data.counts.enriched_with_claude}社 / 元データ ${data.counts.found}社）`;
+    let countText = `${data.counts.returned}社（元データ ${data.counts.found}社）`;
+    const costParts = [];
+    if (data.maps_usage) {
+      const m = data.maps_usage;
+      costParts.push(`Google Maps: $${m.cost_usd.toFixed(3)}（≈¥${m.cost_jpy} / ${m.request_count}リクエスト）`);
+    }
     if (data.claude_usage) {
       const u = data.claude_usage;
       const costStr = u.cost_usd < 0.001
         ? `$${(u.cost_usd * 1000).toFixed(2)}m`
         : `$${u.cost_usd.toFixed(4)}`;
-      countText += ` ― Claude API: ${costStr}（≈¥${u.cost_jpy} / in:${u.input_tokens.toLocaleString()} out:${u.output_tokens.toLocaleString()} tokens）`;
+      costParts.push(`Claude: ${costStr}（≈¥${u.cost_jpy}）`);
     }
+    if (costParts.length > 0) countText += `  ―  💰 ${costParts.join(" + ")}`;
     resultsCount.textContent = countText;
     lastCsvBase64 = data.csv_base64;
     lastProperty = data.property;

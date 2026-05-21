@@ -58,11 +58,16 @@ export function normalizePlace(p) {
  * Run multiple queries (keyword × area combinations) and dedupe.
  * Optionally filter by company-name keywords.
  */
+// Places API (New) Text Search pricing: $0.035 / request (Advanced Data SKU)
+const PRICE_PER_REQUEST = 0.035;
+
 export async function searchTargets({ queries, languageCode = "ja", regionCode = "JP", apiKey, companyKeywords }) {
   const results = new Map();
+  let requestCount = 0;
   for (const q of queries) {
     try {
       const places = await textSearchOne({ query: q, languageCode, regionCode, apiKey });
+      requestCount++;
       for (const p of places) {
         if (!p.id) continue;
         if (!results.has(p.id)) results.set(p.id, p);
@@ -72,12 +77,19 @@ export async function searchTargets({ queries, languageCode = "ja", regionCode =
     }
   }
   const all = [...results.values()].map(normalizePlace);
+  let filtered = all;
   if (companyKeywords && companyKeywords.length > 0) {
     const lowered = companyKeywords.map((k) => k.toLowerCase());
-    return all.filter((r) => {
+    filtered = all.filter((r) => {
       const nl = (r.name || "").toLowerCase();
       return lowered.some((k) => nl.includes(k));
     });
   }
-  return all;
+  const costUsd = requestCount * PRICE_PER_REQUEST;
+  filtered._mapsUsage = {
+    request_count: requestCount,
+    cost_usd: costUsd,
+    cost_jpy: Math.round(costUsd * 150),
+  };
+  return filtered;
 }
