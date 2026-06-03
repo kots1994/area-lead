@@ -37,11 +37,46 @@
           <span class="field-label">物件のフック（USP）</span>
           <textarea id="f-hook" rows="2" placeholder="例: 圏央道海老名IC近接、湘南エリアをカバー、敷地約10,230坪"></textarea>
         </label>
-        <label class="field">
+        <!-- 検索モード -->
+        <div class="field">
+          <span class="field-label">検索モード</span>
+          <div class="mode-toggle">
+            <label class="mode-btn"><input type="radio" name="search-mode" value="area" checked> エリア指定</label>
+            <label class="mode-btn"><input type="radio" name="search-mode" value="radius"> 半径</label>
+            <label class="mode-btn"><input type="radio" name="search-mode" value="drivetime"> 車で○分</label>
+          </div>
+        </div>
+
+        <!-- エリア指定モード -->
+        <div id="mode-area-section" class="field">
           <span class="field-label">対象エリア <span class="req">必須</span></span>
-          <input type="text" id="f-areas" placeholder="例: 海老名市, 厚木市, 平塚市, 寒川町" required>
-          <small class="hint">カンマ区切りで複数入力（同一市町村+隣接3〜5市町村が目安）</small>
-        </label>
+          <div class="chip-input" id="chip-input-wrap">
+            <div class="chip-list" id="chip-list"></div>
+            <input type="text" id="chip-text" class="chip-text" placeholder="市町村名を入力 → Enter">
+          </div>
+          <input type="hidden" id="f-areas">
+          <small class="hint">Enter またはカンマで追加（同一市町村＋隣接3〜5市町村が目安）</small>
+        </div>
+
+        <!-- 半径モード -->
+        <div id="mode-radius-section" class="field" hidden>
+          <span class="field-label">半径（km）<span class="req">必須</span></span>
+          <div class="row-2">
+            <input type="number" id="f-radius-km" min="1" max="100" value="20" style="width:100%">
+            <span class="field-unit">km以内</span>
+          </div>
+          <small class="hint">物件住所を基点として円形で検索します</small>
+        </div>
+
+        <!-- 車○分モード -->
+        <div id="mode-drivetime-section" class="field" hidden>
+          <span class="field-label">車での移動時間 <span class="req">必須</span></span>
+          <div class="row-2">
+            <input type="number" id="f-drivetime-min" min="5" max="120" value="30" style="width:100%">
+            <span class="field-unit">分以内</span>
+          </div>
+          <small class="hint">まず半径 <input type="number" id="f-drivetime-radius" min="5" max="150" value="40" class="inline-num"> km で候補取得 → 実際の所要時間でフィルタ</small>
+        </div>
         <details class="advanced">
           <summary>詳細設定</summary>
           <label class="field">
@@ -87,6 +122,7 @@
               <th class="col-rev">売上</th>
               <th class="col-name">企業名</th>
               <th class="col-addr">住所</th>
+              <th class="col-drive" id="th-drive" hidden>所要時間</th>
               <th class="col-phone">電話</th>
               <th class="col-web">サイト</th>
               <th class="col-email">メール</th>

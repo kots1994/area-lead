@@ -12,6 +12,8 @@ import { searchTargets } from "./lib/places.js";
 import { enrichRows } from "./lib/scraper.js";
 import { rowsToCsv } from "./lib/csv.js";
 import { enrichWithClaude } from "./lib/claude.js";
+import { geocodeAddress } from "./lib/geocode.js";
+import { filterByDrivetime } from "./lib/drivetime.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -91,18 +93,43 @@ app.post("/api/generate", async (req, res) => {
     }
     const language = options.language || "ja";
     const region = options.region || "JP";
+    const searchMode = options.searchMode || "area"; // "area" | "radius" | "drivetime"
     const enabledKeywords = (keywords && keywords.length > 0) ? keywords : DEFAULT_KEYWORDS;
-    const areas = property.areas;
+    const areas = property.areas || [];
 
-    const queries = [];
-    for (const kw of enabledKeywords) {
-      queries.push(kw);
-      for (const area of areas) queries.push(`${area} ${kw}`);
+    // Resolve lat/lng for radius/drivetime modes
+    let propertyLatLng = null;
+    let drivetimeUsage = null;
+    if (searchMode === "radius" || searchMode === "drivetime") {
+      if (!property.address) {
+        return res.status(400).json({ ok: false, error: "半径・車時間モードには所在地（住所）が必要です" });
+      }
+      propertyLatLng = await geocodeAddress({ address: property.address, apiKey });
     }
+
+    // Build queries
+    const queries = [];
+    if (searchMode === "area") {
+      for (const kw of enabledKeywords) {
+        queries.push(kw);
+        for (const area of areas) queries.push(`${area} ${kw}`);
+      }
+    } else {
+      // radius / drivetime: keyword-only queries (circle restriction handles geography)
+      for (const kw of enabledKeywords) queries.push(kw);
+    }
+
+    // Circle for radius / drivetime modes
+    const radiusKm = options.radiusKm || 20;
+    const drivetimeMinutes = options.drivetimeMinutes || 30;
+    const circle = propertyLatLng
+      ? { lat: propertyLatLng.lat, lng: propertyLatLng.lng, radiusMeters: radiusKm * 1000 }
+      : null;
 
     let places = await searchTargets({
       queries, languageCode: language, regionCode: region,
       apiKey, companyKeywords: COMPANY_NAME_KEYWORDS,
+      circle,
     });
     const mapsUsage = places._mapsUsage || null;
     delete places._mapsUsage;
@@ -132,11 +159,33 @@ app.post("/api/generate", async (req, res) => {
       enriched = await enrichRows(enriched, { concurrency: 6 });
     }
 
+    // Driving time filter
+    if (searchMode === "drivetime" && propertyLatLng && enriched.length > 0) {
+      try {
+        const dtResult = await filterByDrivetime({
+          rows: enriched,
+          origin: propertyLatLng,
+          maxMinutes: drivetimeMinutes,
+          apiKey,
+        });
+        enriched = dtResult.rows;
+        drivetimeUsage = {
+          request_count: dtResult.requestCount,
+          cost_usd: dtResult.costUsd,
+          cost_jpy: dtResult.costJpy,
+          max_minutes: drivetimeMinutes,
+        };
+      } catch (e) {
+        console.warn("[Drivetime] filter failed:", e.message);
+      }
+    }
+
     const columns = [
       "priority", "revenue_rank", "category",
       "name", "address", "phone", "website",
       "emails", "contact_url", "has_inquiry_form",
       "reason", "estimated_department",
+      "drive_minutes", "drive_distance_km",
       "rating", "review_count",
       "chinese_or_ec_emerging",
       "maps_url", "types", "business_status",
@@ -156,6 +205,7 @@ app.post("/api/generate", async (req, res) => {
       },
       maps_usage: mapsUsage,
       claude_usage: claudeUsage,
+      drivetime_usage: drivetimeUsage,
       rows: enriched,
       csv_base64: csvBase64,
     });

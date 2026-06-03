@@ -10,6 +10,7 @@ const btnCsv = $("btn-csv");
 
 let lastCsvBase64 = null;
 let lastProperty = null;
+let currentMode = "area";
 
 const KEY_GOOGLE = "al.key.google";
 const KEY_ANTHROPIC = "al.key.anthropic";
@@ -37,6 +38,52 @@ function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (m) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 }
 function truncate(s, n = 50) { s = String(s ?? ""); return s.length > n ? s.slice(0, n) + "…" : s; }
+
+// ─── Chips input ─────────────────────────────────────
+const chipList = $("chip-list");
+const chipText = $("chip-text");
+const fAreas  = $("f-areas");
+let chips = [];
+
+function renderChips() {
+  chipList.innerHTML = chips.map((c, i) =>
+    `<span class="chip">${escapeHtml(c)}<button type="button" class="chip-del" data-i="${i}">×</button></span>`
+  ).join("");
+  fAreas.value = chips.join(",");
+}
+chipList?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".chip-del");
+  if (!btn) return;
+  chips.splice(+btn.dataset.i, 1);
+  renderChips();
+});
+chipText?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === ",") {
+    e.preventDefault();
+    const v = chipText.value.replace(/,/g,"").trim();
+    if (v && !chips.includes(v)) { chips.push(v); renderChips(); }
+    chipText.value = "";
+  }
+  if (e.key === "Backspace" && chipText.value === "" && chips.length) {
+    chips.pop(); renderChips();
+  }
+});
+chipText?.addEventListener("blur", () => {
+  const v = chipText.value.replace(/,/g,"").trim();
+  if (v && !chips.includes(v)) { chips.push(v); renderChips(); }
+  chipText.value = "";
+});
+$("chip-input-wrap")?.addEventListener("click", () => chipText?.focus());
+
+// ─── Search mode toggle ───────────────────────────────
+document.querySelectorAll('input[name="search-mode"]').forEach((radio) => {
+  radio.addEventListener("change", () => {
+    currentMode = radio.value;
+    $("mode-area-section").hidden     = currentMode !== "area";
+    $("mode-radius-section").hidden   = currentMode !== "radius";
+    $("mode-drivetime-section").hidden = currentMode !== "drivetime";
+  });
+});
 
 // ─── API settings modal ───────────────────────────────
 function openApiSettings() {
@@ -95,6 +142,7 @@ function renderRows(rows) {
         <td><span class="rev-tag">${escapeHtml(r.revenue_rank || "—")}</span></td>
         <td class="cell-name">${escapeHtml(r.name)} ${cnBadge}</td>
         <td class="cell-addr">${escapeHtml(truncate(r.address, 40))}</td>
+        <td class="cell-drive" ${$("th-drive")?.hidden ? 'hidden' : ''}>${r.drive_minutes != null ? `🚗 ${r.drive_minutes}分` : "—"}</td>
         <td class="cell-phone">${escapeHtml(r.phone || "—")}</td>
         <td class="cell-web">${r.website ? `<a href="${escapeHtml(r.website)}" target="_blank" rel="noopener">${escapeHtml(truncate(r.website.replace(/^https?:\/\//, ''), 24))}</a>` : "—"}</td>
         <td class="cell-email">${emailHtml}${formBadge ? ' ' + formBadge : ''}</td>
@@ -117,10 +165,15 @@ form.addEventListener("submit", async (e) => {
     name: $("f-name").value.trim(),
     address: $("f-address").value.trim(),
     hook: $("f-hook").value.trim(),
-    areas: $("f-areas").value.split(/[,、]/).map((s) => s.trim()).filter(Boolean),
+    areas: fAreas.value.split(/[,、]/).map((s) => s.trim()).filter(Boolean),
   };
   if (!property.name) { setStatus("物件名を入力してください", "error"); return; }
-  if (property.areas.length === 0) { setStatus("対象エリアを入力してください", "error"); return; }
+  if (currentMode === "area" && property.areas.length === 0) {
+    setStatus("対象エリアを入力してください", "error"); return;
+  }
+  if ((currentMode === "radius" || currentMode === "drivetime") && !property.address) {
+    setStatus("このモードには所在地（住所）が必要です", "error"); return;
+  }
 
   const keywords = $("f-keywords").value.split(/[,、]/).map((s) => s.trim()).filter(Boolean);
   const options = {
@@ -128,6 +181,11 @@ form.addEventListener("submit", async (e) => {
     scrape: $("f-scrape").checked,
     language: "ja",
     region: "JP",
+    searchMode: currentMode,
+    radiusKm: currentMode === "radius"
+      ? (+$("f-radius-km").value || 20)
+      : (+$("f-drivetime-radius")?.value || 40),
+    drivetimeMinutes: +$("f-drivetime-min")?.value || 30,
   };
 
   if (options.enrichWithAi && !apiKeys.anthropic) {
@@ -138,8 +196,10 @@ form.addEventListener("submit", async (e) => {
   }
 
   setBusy(true);
-  setStatus("Phase 1: Google Maps を検索中...", "info");
+  const modeLabel = { area: "エリア", radius: "半径", drivetime: "車時間" }[currentMode] || "";
+  setStatus(`Phase 1: Google Maps を検索中... [${modeLabel}モード]`, "info");
   btnCsv.hidden = true;
+  $("th-drive").hidden = (currentMode !== "drivetime");
   try {
     const data = await api("POST", "/api/generate", { property, keywords, apiKeys, options });
     if (!data.ok) {
@@ -159,6 +219,10 @@ form.addEventListener("submit", async (e) => {
         ? `$${(u.cost_usd * 1000).toFixed(2)}m`
         : `$${u.cost_usd.toFixed(4)}`;
       costParts.push(`Claude: ${costStr}（≈¥${u.cost_jpy}）`);
+    }
+    if (data.drivetime_usage) {
+      const d = data.drivetime_usage;
+      costParts.push(`所要時間フィルタ: $${d.cost_usd.toFixed(3)}（≈¥${d.cost_jpy} / ${d.max_minutes}分以内）`);
     }
     if (costParts.length > 0) countText += `  ―  💰 ${costParts.join(" + ")}`;
     resultsCount.textContent = countText;

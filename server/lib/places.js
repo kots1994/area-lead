@@ -17,9 +17,17 @@ const FIELD_MASK = [
   "places.location",
 ].join(",");
 
-async function textSearchOne({ query, languageCode, regionCode, apiKey, pageSize = 20 }) {
+async function textSearchOne({ query, languageCode, regionCode, apiKey, pageSize = 20, circle }) {
   const body = { textQuery: query, languageCode, pageSize };
   if (regionCode) body.regionCode = regionCode;
+  if (circle) {
+    body.locationRestriction = {
+      circle: {
+        center: { latitude: circle.lat, longitude: circle.lng },
+        radius: circle.radiusMeters,
+      },
+    };
+  }
   const resp = await fetch(TEXT_SEARCH_URL, {
     method: "POST",
     headers: {
@@ -61,12 +69,12 @@ export function normalizePlace(p) {
 // Places API (New) Text Search pricing: $0.035 / request (Advanced Data SKU)
 const PRICE_PER_REQUEST = 0.035;
 
-export async function searchTargets({ queries, languageCode = "ja", regionCode = "JP", apiKey, companyKeywords }) {
+export async function searchTargets({ queries, languageCode = "ja", regionCode = "JP", apiKey, companyKeywords, circle }) {
   const results = new Map();
   let requestCount = 0;
   for (const q of queries) {
     try {
-      const places = await textSearchOne({ query: q, languageCode, regionCode, apiKey });
+      const places = await textSearchOne({ query: q, languageCode, regionCode, apiKey, circle });
       requestCount++;
       for (const p of places) {
         if (!p.id) continue;
