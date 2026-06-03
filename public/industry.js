@@ -203,9 +203,6 @@ $("search-form").addEventListener("submit", async (e) => {
   if (selectedCategories.size === 0) {
     $("status").textContent = "業種カテゴリを1つ以上選択してください"; return;
   }
-  if (chips.length === 0) {
-    $("status").textContent = "エリアを1つ以上入力してください"; return;
-  }
 
   // 選択カテゴリのキーワード・大手リストを統合
   const selectedCats = CATEGORIES.filter((c) => selectedCategories.has(c.id));
@@ -219,7 +216,7 @@ $("search-form").addEventListener("submit", async (e) => {
     name: `業種検索: ${selectedCats.map((c) => c.label).join("/")}`,
     address: "",
     hook: `業種別エマージング企業の発掘。除外大手: ${excludeMajors.slice(0,5).join("、")}など`,
-    areas: chips,
+    areas: chips.length > 0 ? chips : ["全国"],
   };
   const options = {
     enrichWithAi: $("f-enrich-ai").checked,

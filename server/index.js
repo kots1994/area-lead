@@ -109,7 +109,15 @@ app.post("/api/generate", async (req, res) => {
 
     // Build queries
     const queries = [];
-    if (searchMode === "area") {
+    const industryMode = options.industryMode === true;
+    if (industryMode) {
+      // 業種別検索: areas が指定されていればエリア×キーワード、空なら全国検索（キーワードのみ）
+      const realAreas = areas.filter((a) => a !== "全国");
+      for (const kw of enabledKeywords) {
+        queries.push(kw);
+        for (const area of realAreas) queries.push(`${area} ${kw}`);
+      }
+    } else if (searchMode === "area") {
       for (const kw of enabledKeywords) {
         queries.push(kw);
         for (const area of areas) queries.push(`${area} ${kw}`);
@@ -131,7 +139,6 @@ app.post("/api/generate", async (req, res) => {
       : null;
 
     // 業種別検索モードでは物流名フィルタを外す（建材・福祉等は引っかからない為）
-    const industryMode = options.industryMode === true;
     let places = await searchTargets({
       queries, languageCode: language, regionCode: region,
       apiKey,

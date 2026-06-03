@@ -38,13 +38,13 @@
         </div>
 
         <label class="field">
-          <span class="field-label">対象エリア <span class="req">必須</span></span>
+          <span class="field-label">対象エリア <span class="opt">任意</span></span>
           <div class="chip-input" id="chip-input-wrap">
             <div class="chip-list" id="chip-list"></div>
-            <input type="text" id="chip-text" class="chip-text" placeholder="市町村名を入力 → Enter">
+            <input type="text" id="chip-text" class="chip-text" placeholder="市町村名を入力 → Enter（空欄で全国検索）">
           </div>
           <input type="hidden" id="f-areas">
-          <small class="hint">Enter またはカンマで追加</small>
+          <small class="hint">未入力なら全国を対象に検索します</small>
         </label>
 
         <details class="advanced">
