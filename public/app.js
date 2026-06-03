@@ -76,14 +76,21 @@ chipText?.addEventListener("blur", () => {
 $("chip-input-wrap")?.addEventListener("click", () => chipText?.focus());
 
 // ─── Search mode toggle ───────────────────────────────
+function applySearchMode(mode) {
+  currentMode = mode;
+  $("mode-area-section").hidden      = mode !== "area";
+  $("mode-radius-section").hidden    = mode !== "radius";
+  $("mode-drivetime-section").hidden = mode !== "drivetime";
+
+  // 所在地: area モードでは「任意」、radius/drivetime では「必須」
+  const needsAddress = (mode === "radius" || mode === "drivetime");
+  $("address-req").hidden  = !needsAddress;
+  $("address-hint").hidden = !needsAddress;
+}
 document.querySelectorAll('input[name="search-mode"]').forEach((radio) => {
-  radio.addEventListener("change", () => {
-    currentMode = radio.value;
-    $("mode-area-section").hidden     = currentMode !== "area";
-    $("mode-radius-section").hidden   = currentMode !== "radius";
-    $("mode-drivetime-section").hidden = currentMode !== "drivetime";
-  });
+  radio.addEventListener("change", () => applySearchMode(radio.value));
 });
+applySearchMode("area");
 
 // ─── API settings modal ───────────────────────────────
 function openApiSettings() {

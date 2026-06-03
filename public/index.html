@@ -29,9 +29,10 @@
           <span class="field-label">物件名 <span class="req">必須</span></span>
           <input type="text" id="f-name" placeholder="例: SOSiLA海老名" required>
         </label>
-        <label class="field">
-          <span class="field-label">所在地（住所）</span>
+        <label class="field" id="field-address">
+          <span class="field-label">所在地（住所）<span id="address-req" class="req" hidden>必須</span></span>
           <input type="text" id="f-address" placeholder="例: 神奈川県海老名市中新田5-18-1">
+          <small class="hint" id="address-hint" hidden>このモードでは基点として必須です</small>
         </label>
         <label class="field">
           <span class="field-label">物件のフック（USP）</span>
