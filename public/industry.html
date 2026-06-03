@@ -27,15 +27,19 @@
 
   <main class="main">
     <aside class="sidebar">
-      <h2 class="sidebar-title">業種 × エリア</h2>
+      <h2 class="sidebar-title">業界 × 競合除外</h2>
       <form id="search-form" class="form">
-        <div class="field">
-          <span class="field-label">業種カテゴリ <span class="req">必須</span></span>
-          <div class="category-grid" id="category-grid">
-            <!-- JSで生成 -->
-          </div>
-          <small class="hint">複数選択可。倉庫ニーズがあるカテゴリを選択してください</small>
-        </div>
+        <label class="field">
+          <span class="field-label">業界・検索キーワード <span class="req">必須</span></span>
+          <textarea id="f-keywords-free" rows="3" placeholder="例: リース, レンタル, 建機レンタル, 福祉用具, 介護用品&#10;&#10;カンマ・改行区切りで複数入力" required></textarea>
+          <small class="hint">Google Mapsで検索する語句。複数入れるほど網羅性UP（コストも増）</small>
+        </label>
+
+        <label class="field">
+          <span class="field-label">除外したい大手・既知の企業名 <span class="opt">任意</span></span>
+          <textarea id="f-exclude-free" rows="4" placeholder="例: SMFLレンタル, 三菱HCキャピタル, 三共リース, 日建リース工業, レンタルのニッケン, ヤマシタ, ニシケン, ダイドードリンコ, アサヒ飲料, 日本酒類販売, カクヤス, 伊藤園"></textarea>
+          <small class="hint">部分一致で社名から除外。エマージング系を抽出できます</small>
+        </label>
 
         <label class="field">
           <span class="field-label">対象エリア <span class="opt">任意</span></span>
@@ -49,13 +53,6 @@
 
         <details class="advanced">
           <summary>詳細設定</summary>
-          <label class="field toggle-field">
-            <span>
-              <strong>大手を除外してエマージング企業を優先</strong>
-              <small>SMFL・三菱HC・伊藤園・アサヒ等の有名どころを除外</small>
-            </span>
-            <input type="checkbox" id="f-exclude-majors" checked>
-          </label>
           <label class="field toggle-field">
             <span>
               <strong>Claude API で優先度判定</strong>

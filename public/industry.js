@@ -1,110 +1,18 @@
-// 業種別エマージング検索
+// 業種別エマージング検索 (フリー入力版)
 const $ = (id) => document.getElementById(id);
 
-// ─── 業種カテゴリ定義 ───────────────────────
-const CATEGORIES = [
-  {
-    id: "lease",
-    label: "🏗 リース",
-    keywords: ["レンタル", "リース", "建機レンタル", "機械レンタル", "工事用機材レンタル", "イベント機材レンタル"],
-    majors: ["SMFL", "三菱HCキャピタル", "三共リース", "日建リース", "ニッケン", "アクティオ", "西尾", "コマツレンタル"],
-  },
-  {
-    id: "welfare",
-    label: "♿ 福祉用具",
-    keywords: ["福祉用具", "介護用品", "介護機器", "福祉用具レンタル", "介護用品レンタル", "介護ベッド"],
-    majors: ["ヤマシタ", "ニシケン", "フランスベッド", "ダスキンヘルスレント", "パナソニックエイジフリー"],
-  },
-  {
-    id: "beverage",
-    label: "🥤 飲料",
-    keywords: ["飲料", "清涼飲料", "ミネラルウォーター", "飲料卸", "酒類卸", "酒販", "ジュース製造", "ボトリング"],
-    majors: ["ダイドードリンコ", "アサヒ飲料", "日本酒類販売", "カクヤス", "伊藤園", "コカ・コーラ", "サントリー", "キリン", "ポッカサッポロ"],
-  },
-  {
-    id: "construction-material",
-    label: "🧱 建材",
-    keywords: ["建材", "住宅建材", "建材販売", "建材商社", "建材卸", "サッシ", "外装材"],
-    majors: ["LIXIL", "YKK AP", "TOTO", "大建工業", "ジューテック", "ナイス"],
-  },
-  {
-    id: "construction-machine",
-    label: "🚧 建機",
-    keywords: ["建設機械", "建機販売", "重機販売", "建設機材"],
-    majors: ["コマツ", "日立建機", "キャタピラー", "コベルコ建機"],
-  },
-  {
-    id: "ec-logistics",
-    label: "📦 EC物流",
-    keywords: ["EC物流", "フルフィルメント", "通販物流", "越境EC", "EC配送"],
-    majors: ["ヤマト運輸", "佐川急便", "日本郵便"],
-  },
-  {
-    id: "food-wholesale",
-    label: "🍱 食品卸",
-    keywords: ["食品卸", "食品商社", "業務用食品", "冷凍食品卸", "青果卸"],
-    majors: ["三菱食品", "日本アクセス", "国分", "加藤産業", "伊藤忠食品"],
-  },
-  {
-    id: "apparel",
-    label: "👕 アパレル",
-    keywords: ["アパレル", "ファッション卸", "衣料品卸", "D2C アパレル"],
-    majors: ["ユニクロ", "ファーストリテイリング", "しまむら", "ワールド", "オンワード"],
-  },
-  {
-    id: "cosmetics",
-    label: "💄 化粧品",
-    keywords: ["化粧品", "コスメ", "化粧品卸", "美容商材", "D2C コスメ"],
-    majors: ["資生堂", "コーセー", "花王", "ポーラ", "マンダム"],
-  },
-  {
-    id: "pharma",
-    label: "💊 医薬・ヘルスケア",
-    keywords: ["医薬品卸", "医療機器", "ヘルスケア商品", "サプリメント"],
-    majors: ["メディパル", "アルフレッサ", "スズケン", "東邦薬品"],
-  },
-  {
-    id: "auto-parts",
-    label: "🚗 自動車部品",
-    keywords: ["自動車部品", "中古部品", "自動車部品商社", "カー用品"],
-    majors: ["デンソー", "アイシン", "ブリヂストン", "オートバックス", "イエローハット"],
-  },
-  {
-    id: "construction-3pl",
-    label: "📋 一般物流/3PL",
-    keywords: ["物流", "倉庫", "3PL", "ロジスティクス", "運輸", "運送"],
-    majors: ["日本通運", "鴻池運輸", "センコー", "山九", "セイノー", "大和物流", "日立物流", "SBSロジ"],
-  },
-];
-
-// ─── State ─────────────────────────────────
-let selectedCategories = new Set();
 let chips = [];
 let lastCsvBase64 = null;
 
 const KEY_GOOGLE = "al.key.google";
 const KEY_ANTHROPIC = "al.key.anthropic";
+const KEY_LAST_KW = "al.industry.lastKeywords";
+const KEY_LAST_EXCLUDE = "al.industry.lastExclude";
 function getStoredKeys() {
   return {
     google_maps: localStorage.getItem(KEY_GOOGLE) || "",
     anthropic: localStorage.getItem(KEY_ANTHROPIC) || "",
   };
-}
-
-// ─── カテゴリチップを描画 ───────────────────
-function renderCategoryGrid() {
-  $("category-grid").innerHTML = CATEGORIES.map((c) => `
-    <label class="category-chip">
-      <input type="checkbox" value="${c.id}" data-cat>
-      <span class="category-chip-label">${c.label}</span>
-    </label>
-  `).join("");
-  document.querySelectorAll("[data-cat]").forEach((cb) => {
-    cb.addEventListener("change", () => {
-      if (cb.checked) selectedCategories.add(cb.value);
-      else selectedCategories.delete(cb.value);
-    });
-  });
 }
 
 // ─── エリアchip入力 ───────────────────────
@@ -114,9 +22,7 @@ function renderChips() {
   `).join("");
   $("f-areas").value = chips.join(",");
   document.querySelectorAll("[data-idx]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      chips.splice(+btn.dataset.idx, 1); renderChips();
-    });
+    btn.addEventListener("click", () => { chips.splice(+btn.dataset.idx, 1); renderChips(); });
   });
 }
 $("chip-text").addEventListener("keydown", (e) => {
@@ -167,7 +73,7 @@ function priorityBadge(p) {
 function renderRows(rows) {
   const tbody = $("results-body");
   if (!rows || rows.length===0) {
-    tbody.innerHTML = `<tr class="empty"><td colspan="9"><div class="empty-state"><h3>該当企業なし</h3><p>カテゴリ・エリアを変えて試してください</p></div></td></tr>`;
+    tbody.innerHTML = `<tr class="empty"><td colspan="9"><div class="empty-state"><h3>該当企業なし</h3><p>キーワード・エリアを変えて試してください</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((r) => {
@@ -191,6 +97,14 @@ function renderRows(rows) {
   }).join("");
 }
 
+// ─── テキスト → 配列 (カンマ・改行区切り) ──
+function splitFreeText(s) {
+  return (s || "")
+    .split(/[,、\n\r]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
 // ─── Submit ───────────────────────────────
 $("search-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -200,22 +114,22 @@ $("search-form").addEventListener("submit", async (e) => {
     openApiSettings();
     return;
   }
-  if (selectedCategories.size === 0) {
-    $("status").textContent = "業種カテゴリを1つ以上選択してください"; return;
+  const keywords = splitFreeText($("f-keywords-free").value);
+  const excludeMajors = splitFreeText($("f-exclude-free").value);
+  if (keywords.length === 0) {
+    $("status").textContent = "業界キーワードを1つ以上入力してください"; return;
   }
 
-  // 選択カテゴリのキーワード・大手リストを統合
-  const selectedCats = CATEGORIES.filter((c) => selectedCategories.has(c.id));
-  const keywords = [...new Set(selectedCats.flatMap((c) => c.keywords))];
-  const excludeMajors = $("f-exclude-majors").checked
-    ? [...new Set(selectedCats.flatMap((c) => c.majors))]
-    : [];
+  // 入力内容を保存
+  localStorage.setItem(KEY_LAST_KW, $("f-keywords-free").value);
+  localStorage.setItem(KEY_LAST_EXCLUDE, $("f-exclude-free").value);
 
-  // 仮想プロパティとしてエリア中心の検索を呼ぶ
   const property = {
-    name: `業種検索: ${selectedCats.map((c) => c.label).join("/")}`,
+    name: `業界検索: ${keywords.slice(0,3).join("/")}${keywords.length>3?"他":""}`,
     address: "",
-    hook: `業種別エマージング企業の発掘。除外大手: ${excludeMajors.slice(0,5).join("、")}など`,
+    hook: excludeMajors.length > 0
+      ? `業界エマージング企業の発掘。除外: ${excludeMajors.slice(0,5).join("、")}など${excludeMajors.length}社`
+      : `業界候補企業の発掘`,
     areas: chips.length > 0 ? chips : ["全国"],
   };
   const options = {
@@ -231,7 +145,7 @@ $("search-form").addEventListener("submit", async (e) => {
   btn.disabled = true;
   btn.querySelector(".btn-spinner").hidden = false;
   btn.querySelector(".btn-label").textContent = "生成中...";
-  $("status").textContent = "Phase 1: Google Maps を検索中...";
+  $("status").textContent = `Phase 1: Google Maps を検索中... (${keywords.length}キーワード × ${chips.length || 1}エリア)`;
   $("btn-csv").hidden = true;
 
   try {
@@ -277,11 +191,14 @@ $("btn-csv").addEventListener("click", () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `業種別エマージング_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `業界別検索_${new Date().toISOString().slice(0,10)}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 });
 
-// Init
-renderCategoryGrid();
+// Init: 前回の入力を復元
+const lastKw = localStorage.getItem(KEY_LAST_KW);
+const lastEx = localStorage.getItem(KEY_LAST_EXCLUDE);
+if (lastKw) $("f-keywords-free").value = lastKw;
+if (lastEx) $("f-exclude-free").value = lastEx;
 if (!getStoredKeys().google_maps) setTimeout(openApiSettings, 400);
