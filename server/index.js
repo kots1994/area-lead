@@ -130,13 +130,26 @@ app.post("/api/generate", async (req, res) => {
       ? { lat: propertyLatLng.lat, lng: propertyLatLng.lng, radiusMeters: radiusKm * 1000 }
       : null;
 
+    // 業種別検索モードでは物流名フィルタを外す（建材・福祉等は引っかからない為）
+    const industryMode = options.industryMode === true;
     let places = await searchTargets({
       queries, languageCode: language, regionCode: region,
-      apiKey, companyKeywords: COMPANY_NAME_KEYWORDS,
+      apiKey,
+      companyKeywords: industryMode ? null : COMPANY_NAME_KEYWORDS,
       circle,
     });
     const mapsUsage = places._mapsUsage || null;
     delete places._mapsUsage;
+
+    // 大手除外フィルタ（業種別検索のエマージング指定）
+    const excludeCompanies = Array.isArray(options.excludeCompanies) ? options.excludeCompanies : [];
+    if (excludeCompanies.length > 0) {
+      const excludeLower = excludeCompanies.map((s) => s.toLowerCase());
+      places = places.filter((p) => {
+        const nl = (p.name || "").toLowerCase();
+        return !excludeLower.some((ex) => nl.includes(ex.toLowerCase()));
+      });
+    }
 
     const MAX_TO_ENRICH = 60;
     let placesForEnrich = places.slice(0, MAX_TO_ENRICH);

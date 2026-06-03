@@ -440,3 +440,31 @@ body {
 
 /* [hidden] 属性を確実に効かせる (display:flex を上書き) */
 .field[hidden], [hidden] { display: none !important; }
+
+/* タブナビゲーション */
+.tab-nav { display:flex; gap:6px; flex:1; margin-left:24px; }
+.tab-link {
+  padding: 8px 16px; border-radius: 8px; text-decoration: none;
+  color: var(--gray-700); font-size: 14px; font-weight: 500;
+  transition: all .15s;
+}
+.tab-link:hover { background: var(--gray-100); }
+.tab-link.active { background: var(--brand-50, #eff6ff); color: var(--brand, #2563eb); font-weight: 600; }
+
+/* カテゴリチップ */
+.category-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr));
+  gap: 8px; margin-top: 8px;
+}
+.category-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border: 1.5px solid var(--gray-200);
+  border-radius: 10px; cursor: pointer; transition: all .15s;
+  font-size: 13px; background: #fff;
+}
+.category-chip:hover { border-color: var(--brand, #2563eb); }
+.category-chip input { margin: 0; }
+.category-chip input:checked + .category-chip-label { font-weight: 600; }
+.category-chip:has(input:checked) {
+  border-color: var(--brand, #2563eb); background: var(--brand-50, #eff6ff);
+}
