@@ -120,8 +120,12 @@ app.post("/api/generate", async (req, res) => {
     }
 
     // Circle for radius / drivetime modes
-    const radiusKm = options.radiusKm || 20;
     const drivetimeMinutes = options.drivetimeMinutes || 30;
+    // drivetime モード: 一般道40km/h想定で分×0.67km + 余裕でカバーする
+    const autoRadiusForDrivetime = Math.min(Math.max(drivetimeMinutes * 0.8, 15), 80);
+    const radiusKm = searchMode === "drivetime"
+      ? autoRadiusForDrivetime
+      : (options.radiusKm || 20);
     const circle = propertyLatLng
       ? { lat: propertyLatLng.lat, lng: propertyLatLng.lng, radiusMeters: radiusKm * 1000 }
       : null;

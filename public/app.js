@@ -189,9 +189,7 @@ form.addEventListener("submit", async (e) => {
     language: "ja",
     region: "JP",
     searchMode: currentMode,
-    radiusKm: currentMode === "radius"
-      ? (+$("f-radius-km").value || 20)
-      : (+$("f-drivetime-radius")?.value || 40),
+    radiusKm: currentMode === "radius" ? (+$("f-radius-km").value || 20) : undefined,
     drivetimeMinutes: +$("f-drivetime-min")?.value || 30,
   };
 
