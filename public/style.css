@@ -437,3 +437,6 @@ body {
 /* ─── Drive time column ────────────────────────────── */
 .col-drive { white-space:nowrap; }
 .cell-drive { font-size:12px; color:var(--gray-700); white-space:nowrap; }
+
+/* [hidden] 属性を確実に効かせる (display:flex を上書き) */
+.field[hidden], [hidden] { display: none !important; }
