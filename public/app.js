@@ -166,17 +166,18 @@ form.addEventListener("submit", async (e) => {
   const property = {
     name: $("f-name").value.trim(),
     address: $("f-address").value.trim(),
+    pin: $("f-pin").value.trim(),
     hook: $("f-hook").value.trim(),
     areas: fAreas.value.split(/[,、]/).map((s) => s.trim()).filter(Boolean),
   };
-  if (!property.name && !property.address) {
-    setStatus("物件名または住所のどちらかを入力してください", "error"); return;
+  if (!property.name && !property.address && !property.pin) {
+    setStatus("物件名・住所・ピンのいずれかを入力してください", "error"); return;
   }
   if (currentMode === "area" && property.areas.length === 0) {
     setStatus("対象エリアを入力してください", "error"); return;
   }
-  if ((currentMode === "radius" || currentMode === "drivetime") && !property.address && !property.name) {
-    setStatus("このモードには住所または物件名（基点）が必要です", "error"); return;
+  if ((currentMode === "radius" || currentMode === "drivetime") && !property.address && !property.name && !property.pin) {
+    setStatus("このモードには住所・物件名・ピンのいずれか（基点）が必要です", "error"); return;
   }
 
   const keywords = $("f-keywords").value.split(/[,、]/).map((s) => s.trim()).filter(Boolean);

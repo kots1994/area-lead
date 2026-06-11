@@ -373,6 +373,7 @@ body {
 .referral-stats strong { color: #111827; font-weight: 700; }
 
 .req { display: inline-block; font-size: 9px; font-weight: 700; background: #FEE2E2; color: #991B1B; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
+.opt { display: inline-block; font-size: 9px; font-weight: 700; background: #E5E7EB; color: #4B5563; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
 
 /* Dev panel */
 .dev-panel { margin: 20px 24px; padding: 12px; background: white; border: 1px solid #E5E7EB; border-radius: 10px; font-size: 12px; }

@@ -14,6 +14,7 @@ import { rowsToCsv } from "./lib/csv.js";
 import { enrichWithClaude } from "./lib/claude.js";
 import { geocodeAddress } from "./lib/geocode.js";
 import { filterByDrivetime } from "./lib/drivetime.js";
+import { resolvePin } from "./lib/pin.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -87,15 +88,17 @@ app.post("/api/generate", async (req, res) => {
     needApiKey: true,
   });
   try {
-    if (!property.name && !property.address) {
-      return res.status(400).json({ ok: false, error: "物件名または住所が必要です" });
-    }
-    if (!Array.isArray(property.areas) || property.areas.length === 0) {
-      return res.status(400).json({ ok: false, error: "対象エリアを1つ以上入力してください" });
+    if (!property.name && !property.address && !property.pin) {
+      return res.status(400).json({ ok: false, error: "物件名・住所・Googleマップのピンのいずれかが必要です" });
     }
     const language = options.language || "ja";
     const region = options.region || "JP";
     const searchMode = options.searchMode || "area"; // "area" | "radius" | "drivetime"
+    // 対象エリアは「エリア指定」モードでのみ必須（半径/車/業種別は地理を別途指定するため不要）
+    if (searchMode === "area" && options.industryMode !== true &&
+        (!Array.isArray(property.areas) || property.areas.length === 0)) {
+      return res.status(400).json({ ok: false, error: "対象エリアを1つ以上入力してください" });
+    }
     const enabledKeywords = (keywords && keywords.length > 0) ? keywords : DEFAULT_KEYWORDS;
     const areas = property.areas || [];
 
@@ -103,12 +106,19 @@ app.post("/api/generate", async (req, res) => {
     let propertyLatLng = null;
     let drivetimeUsage = null;
     if (searchMode === "radius" || searchMode === "drivetime") {
-      // 基点は住所優先・無ければ物件名でジオコード（施設名でも解決できることが多い）
-      const origin = property.address || property.name;
-      if (!origin) {
-        return res.status(400).json({ ok: false, error: "半径・車時間モードには住所または物件名（基点）が必要です" });
+      // 基点の優先順位: ①Googleマップのピン(URL/座標) → ②住所 → ③物件名でジオコード
+      if (property.pin) {
+        propertyLatLng = await resolvePin(property.pin);
+        if (!propertyLatLng) {
+          return res.status(400).json({ ok: false, error: "ピンを解析できませんでした。Googleマップの共有リンク、または「緯度,経度」（例: 35.4310,139.3823）を貼り付けてください。" });
+        }
+      } else {
+        const origin = property.address || property.name;
+        if (!origin) {
+          return res.status(400).json({ ok: false, error: "半径・車時間モードには住所・物件名・ピンのいずれかが必要です" });
+        }
+        propertyLatLng = await geocodeAddress({ address: origin, apiKey });
       }
-      propertyLatLng = await geocodeAddress({ address: origin, apiKey });
     }
 
     // Build queries
