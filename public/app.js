@@ -17,6 +17,8 @@ let currentMode = "area";
 const KEY_GOOGLE = "al.key.google";
 const KEY_ANTHROPIC = "al.key.anthropic";
 const KEY_GCLIENT = "al.key.gclient";
+// Sheet出力用の既定OAuthクライアントID（Webアプリ用クライアントIDは公開情報）
+const DEFAULT_GCLIENT = "83180101815-b5j1399jb6j0qo4pkbl8pucg2j881jve.apps.googleusercontent.com";
 const KEY_SHEET = "al.sheet.id";
 function getStoredKeys() {
   return {
@@ -321,10 +323,10 @@ async function sheetsApi(token, method, url, body) {
 
 btnSheet?.addEventListener("click", async () => {
   if (!lastRows || lastRows.length === 0) return;
-  const clientId = localStorage.getItem(KEY_GCLIENT) || "";
+  const clientId = localStorage.getItem(KEY_GCLIENT) || DEFAULT_GCLIENT;
   const sheetId = parseSpreadsheetId(localStorage.getItem(KEY_SHEET) || "");
-  if (!clientId || !sheetId) {
-    setStatus("Sheet出力には「API設定」で OAuthクライアントID と 出力先スプレッドシート の設定が必要です", "error");
+  if (!sheetId) {
+    setStatus("Sheet出力には「API設定」で 出力先スプレッドシート の設定が必要です", "error");
     openApiSettings();
     return;
   }

@@ -176,9 +176,9 @@
         </label>
         <label class="field">
           <span class="field-label">Google OAuth クライアントID <span class="opt">Sheet出力用</span></span>
-          <input type="text" id="key-gclient" placeholder="xxxx.apps.googleusercontent.com" autocomplete="off">
+          <input type="text" id="key-gclient" placeholder="空欄でOK（既定のクライアントIDを使用）" autocomplete="off">
           <small class="hint">
-            <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">GCP 認証情報</a>で「OAuthクライアントID（ウェブアプリ）」を作成し、承認済みJavaScriptオリジンにこのサイトのURLを追加。Google Sheets API も有効化してください
+            通常は空欄のままでOK。自前のIDを使う場合のみ、<a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">GCP 認証情報</a>で「OAuthクライアントID（ウェブアプリ）」を作成して入力
           </small>
         </label>
         <label class="field">
@@ -200,6 +200,6 @@
   </footer>
 </div>
 
-<script src="/app.js?v=5"></script>
+<script src="/app.js?v=6"></script>
 </body>
 </html>
