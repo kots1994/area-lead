@@ -21,6 +21,14 @@ export async function filterByDrivetime({ rows, origin, maxMinutes, apiKey }) {
       requestCount++;
       if (!resp.ok) throw new Error(`DistanceMatrix ${resp.status}`);
       const data = await resp.json();
+      // REQUEST_DENIED 等だと rows が空で、フィルタが効かないまま全件素通ししてしまう。
+      // 設定漏れ（Distance Matrix API 未有効化）に気づけるよう明示的に投げる。
+      if (data.status && data.status !== "OK") {
+        const hint = data.status === "REQUEST_DENIED"
+          ? "（Google Cloud で『Distance Matrix API』を有効化してください）"
+          : "";
+        throw new Error(`DistanceMatrix ${data.status}${data.error_message ? `: ${data.error_message}` : ""}${hint}`);
+      }
       const elements = data.rows?.[0]?.elements || [];
 
       for (let j = 0; j < batch.length; j++) {
@@ -37,8 +45,10 @@ export async function filterByDrivetime({ rows, origin, maxMinutes, apiKey }) {
         }
       }
     } catch (e) {
+      // 設定エラー（APIキー/未有効化）は全バッチで同じく失敗するので、握りつぶさず上位へ。
+      if (/REQUEST_DENIED/.test(e.message)) throw e;
       console.warn(`[DistanceMatrix] batch ${i} failed: ${e.message}`);
-      // On error, include the batch without drive_minutes filter
+      // 一時的エラーはフィルタせず素通し（リスト自体は返す）
       out.push(...batch);
     }
   }
