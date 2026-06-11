@@ -7,13 +7,17 @@ const status = $("status");
 const tbody = $("results-body");
 const resultsCount = $("results-count");
 const btnCsv = $("btn-csv");
+const btnSheet = $("btn-sheet");
 
 let lastCsvBase64 = null;
 let lastProperty = null;
+let lastRows = null;
 let currentMode = "area";
 
 const KEY_GOOGLE = "al.key.google";
 const KEY_ANTHROPIC = "al.key.anthropic";
+const KEY_GCLIENT = "al.key.gclient";
+const KEY_SHEET = "al.sheet.id";
 function getStoredKeys() {
   return {
     google_maps: localStorage.getItem(KEY_GOOGLE) || "",
@@ -92,6 +96,8 @@ function openApiSettings() {
   const k = getStoredKeys();
   $("key-google").value = k.google_maps;
   $("key-anthropic").value = k.anthropic;
+  $("key-gclient").value = localStorage.getItem(KEY_GCLIENT) || "";
+  $("key-sheet").value = localStorage.getItem(KEY_SHEET) || "";
   $("api-settings-modal").hidden = false;
   $("api-settings-status").textContent = "";
   setTimeout(() => $("key-google").focus(), 100);
@@ -106,6 +112,10 @@ $("api-settings-form")?.addEventListener("submit", (e) => {
   const a = $("key-anthropic").value.trim();
   if (g) localStorage.setItem(KEY_GOOGLE, g); else localStorage.removeItem(KEY_GOOGLE);
   if (a) localStorage.setItem(KEY_ANTHROPIC, a); else localStorage.removeItem(KEY_ANTHROPIC);
+  const gc = $("key-gclient").value.trim();
+  const sh = $("key-sheet").value.trim();
+  if (gc) localStorage.setItem(KEY_GCLIENT, gc); else localStorage.removeItem(KEY_GCLIENT);
+  if (sh) localStorage.setItem(KEY_SHEET, sh); else localStorage.removeItem(KEY_SHEET);
   $("api-settings-status").textContent = "✓ 保存しました";
   $("api-settings-status").className = "modal-status success";
   setTimeout(closeApiSettings, 800);
@@ -113,8 +123,12 @@ $("api-settings-form")?.addEventListener("submit", (e) => {
 $("btn-clear-keys")?.addEventListener("click", () => {
   localStorage.removeItem(KEY_GOOGLE);
   localStorage.removeItem(KEY_ANTHROPIC);
+  localStorage.removeItem(KEY_GCLIENT);
+  localStorage.removeItem(KEY_SHEET);
   $("key-google").value = "";
   $("key-anthropic").value = "";
+  $("key-gclient").value = "";
+  $("key-sheet").value = "";
   $("api-settings-status").textContent = "クリアしました";
   $("api-settings-status").className = "modal-status info";
 });
@@ -202,6 +216,7 @@ form.addEventListener("submit", async (e) => {
   const modeLabel = { area: "エリア", radius: "半径", drivetime: "車時間" }[currentMode] || "";
   setStatus(`Phase 1: Google Maps を検索中... [${modeLabel}モード]`, "info");
   btnCsv.hidden = true;
+  btnSheet.hidden = true;
   $("th-drive").hidden = (currentMode !== "drivetime");
   try {
     const data = await api("POST", "/api/generate", { property, keywords, apiKeys, options });
@@ -231,7 +246,9 @@ form.addEventListener("submit", async (e) => {
     resultsCount.textContent = countText;
     lastCsvBase64 = data.csv_base64;
     lastProperty = data.property;
+    lastRows = data.rows;
     btnCsv.hidden = false;
+    btnSheet.hidden = !(data.rows && data.rows.length > 0);
     setStatus(`✓ ${data.counts.returned}社のアタックリストを生成しました`, "success");
   } catch (err) {
     setStatus(`エラー: ${err.message}`, "error");
@@ -252,6 +269,113 @@ btnCsv.addEventListener("click", () => {
   a.download = `${safe}_アタックリスト_${new Date().toISOString().slice(0,10)}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
+});
+
+// ─── Google Sheets 出力（新しいタブとして追加）──────────
+// ブラウザ内OAuth(GIS)でユーザー自身のGoogleアカウントから直接書き込む。サーバーは経由しない。
+const SHEET_COLUMNS = [
+  ["priority", "優先度"], ["revenue_rank", "売上ランク"], ["category", "業種"],
+  ["name", "企業名"], ["address", "住所"], ["phone", "電話"], ["website", "サイト"],
+  ["emails", "メール"], ["contact_url", "問い合わせURL"], ["has_inquiry_form", "フォーム有"],
+  ["reason", "候補理由"], ["estimated_department", "推定担当部署"],
+  ["drive_minutes", "車(分)"], ["drive_distance_km", "距離(km)"],
+  ["rating", "評価"], ["review_count", "クチコミ数"],
+  ["chinese_or_ec_emerging", "EC新興"], ["maps_url", "Maps URL"],
+];
+
+function parseSpreadsheetId(input) {
+  const m = String(input || "").match(/\/d\/([a-zA-Z0-9_-]{20,})/);
+  if (m) return m[1];
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(String(input || "").trim())) return input.trim();
+  return null;
+}
+
+let gisToken = null; // { access_token, expires_at }
+function getSheetsToken(clientId) {
+  return new Promise((resolve, reject) => {
+    if (gisToken && gisToken.expires_at > Date.now() + 60_000) return resolve(gisToken.access_token);
+    if (!window.google?.accounts?.oauth2) return reject(new Error("Google認証ライブラリの読込待ちです。数秒後にもう一度お試しください"));
+    const tc = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: "https://www.googleapis.com/auth/spreadsheets",
+      callback: (resp) => {
+        if (resp.error) return reject(new Error(`Google認証エラー: ${resp.error}`));
+        gisToken = { access_token: resp.access_token, expires_at: Date.now() + (resp.expires_in || 3600) * 1000 };
+        resolve(gisToken.access_token);
+      },
+    });
+    tc.requestAccessToken();
+  });
+}
+
+async function sheetsApi(token, method, url, body) {
+  const r = await fetch(url, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error?.message || `Sheets API ${r.status}`);
+  return data;
+}
+
+btnSheet?.addEventListener("click", async () => {
+  if (!lastRows || lastRows.length === 0) return;
+  const clientId = localStorage.getItem(KEY_GCLIENT) || "";
+  const sheetId = parseSpreadsheetId(localStorage.getItem(KEY_SHEET) || "");
+  if (!clientId || !sheetId) {
+    setStatus("Sheet出力には「⚙️ API設定」で OAuthクライアントID と 出力先スプレッドシート の設定が必要です", "error");
+    openApiSettings();
+    return;
+  }
+  btnSheet.disabled = true;
+  try {
+    setStatus("Googleアカウントで認可中...", "info");
+    const token = await getSheetsToken(clientId);
+
+    // タブ名: 物件名_月日-時分（重複時は連番サフィックス）
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const base = `${(lastProperty || "AreaLead").replace(/[\[\]:*?\/\\]/g, "_").slice(0, 60)}_${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+    setStatus("新しいタブを作成中...", "info");
+    let title = base, added = null;
+    for (let i = 0; i < 3; i++) {
+      try {
+        added = await sheetsApi(token, "POST", `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`, {
+          requests: [{ addSheet: { properties: { title } } }],
+        });
+        break;
+      } catch (e) {
+        if (/already exists/i.test(e.message)) { title = `${base}_${i + 2}`; continue; }
+        throw e;
+      }
+    }
+    if (!added) throw new Error("タブ名が重複しています。時間をおいて再実行してください");
+    const gid = added.replies?.[0]?.addSheet?.properties?.sheetId;
+
+    setStatus(`${lastRows.length}社を書き込み中...`, "info");
+    const values = [
+      SHEET_COLUMNS.map(([, label]) => label),
+      ...lastRows.map((r) => SHEET_COLUMNS.map(([key]) => {
+        const v = r[key];
+        if (v === null || v === undefined) return "";
+        if (Array.isArray(v)) return v.join(", ");
+        if (typeof v === "boolean") return v ? "TRUE" : "";
+        return String(v);
+      })),
+    ];
+    await sheetsApi(token, "PUT",
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(`'${title}'!A1`)}?valueInputOption=RAW`,
+      { values });
+
+    const link = `https://docs.google.com/spreadsheets/d/${sheetId}/edit${gid != null ? `#gid=${gid}` : ""}`;
+    status.className = "status success";
+    status.innerHTML = `✓ Sheetにタブ「${escapeHtml(title)}」を追加しました（${lastRows.length}社） <a href="${link}" target="_blank" rel="noopener">開く →</a>`;
+  } catch (err) {
+    setStatus(`Sheet出力エラー: ${err.message}`, "error");
+  } finally {
+    btnSheet.disabled = false;
+  }
 });
 
 // Init: 初回 API キー未設定なら設定モーダル

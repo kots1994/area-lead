@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AreaLead — 倉庫テナント候補リスト自動生成</title>
 <link rel="stylesheet" href="/style.css?v=3">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <div class="app">
@@ -122,6 +123,7 @@
         <div class="results-actions">
           <span class="results-count" id="results-count"></span>
           <button class="btn-secondary" id="btn-csv" hidden>📥 CSVダウンロード</button>
+          <button class="btn-secondary" id="btn-sheet" hidden>📊 Sheetに追加</button>
         </div>
       </div>
       <div class="results-table-wrap">
@@ -174,6 +176,18 @@
             <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic Console</a> で発行 / 優先度判定に使用
           </small>
         </label>
+        <label class="field">
+          <span class="field-label">Google OAuth クライアントID <span class="opt">Sheet出力用</span></span>
+          <input type="text" id="key-gclient" placeholder="xxxx.apps.googleusercontent.com" autocomplete="off">
+          <small class="hint">
+            <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">GCP 認証情報</a>で「OAuthクライアントID（ウェブアプリ）」を作成し、承認済みJavaScriptオリジンにこのサイトのURLを追加。Google Sheets API も有効化してください
+          </small>
+        </label>
+        <label class="field">
+          <span class="field-label">出力先スプレッドシート <span class="opt">Sheet出力用</span></span>
+          <input type="text" id="key-sheet" placeholder="SheetのURL または ID" autocomplete="off">
+          <small class="hint">追加先のGoogle SheetのURLを貼り付け（結果が新しいタブとして追加されます）</small>
+        </label>
         <div class="modal-actions">
           <button type="button" class="btn-secondary" id="btn-clear-keys">クリア</button>
           <button type="submit" class="btn-primary">保存</button>
@@ -188,6 +202,6 @@
   </footer>
 </div>
 
-<script src="/app.js?v=3"></script>
+<script src="/app.js?v=4"></script>
 </body>
 </html>
