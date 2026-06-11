@@ -81,11 +81,6 @@ function applySearchMode(mode) {
   $("mode-area-section").hidden      = mode !== "area";
   $("mode-radius-section").hidden    = mode !== "radius";
   $("mode-drivetime-section").hidden = mode !== "drivetime";
-
-  // 所在地: area モードでは「任意」、radius/drivetime では「必須」
-  const needsAddress = (mode === "radius" || mode === "drivetime");
-  $("address-req").hidden  = !needsAddress;
-  $("address-hint").hidden = !needsAddress;
 }
 document.querySelectorAll('input[name="search-mode"]').forEach((radio) => {
   radio.addEventListener("change", () => applySearchMode(radio.value));
@@ -174,12 +169,14 @@ form.addEventListener("submit", async (e) => {
     hook: $("f-hook").value.trim(),
     areas: fAreas.value.split(/[,、]/).map((s) => s.trim()).filter(Boolean),
   };
-  if (!property.name) { setStatus("物件名を入力してください", "error"); return; }
+  if (!property.name && !property.address) {
+    setStatus("物件名または住所のどちらかを入力してください", "error"); return;
+  }
   if (currentMode === "area" && property.areas.length === 0) {
     setStatus("対象エリアを入力してください", "error"); return;
   }
-  if ((currentMode === "radius" || currentMode === "drivetime") && !property.address) {
-    setStatus("このモードには所在地（住所）が必要です", "error"); return;
+  if ((currentMode === "radius" || currentMode === "drivetime") && !property.address && !property.name) {
+    setStatus("このモードには住所または物件名（基点）が必要です", "error"); return;
   }
 
   const keywords = $("f-keywords").value.split(/[,、]/).map((s) => s.trim()).filter(Boolean);

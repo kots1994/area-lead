@@ -87,7 +87,9 @@ app.post("/api/generate", async (req, res) => {
     needApiKey: true,
   });
   try {
-    if (!property.name) return res.status(400).json({ ok: false, error: "物件名が必要です" });
+    if (!property.name && !property.address) {
+      return res.status(400).json({ ok: false, error: "物件名または住所が必要です" });
+    }
     if (!Array.isArray(property.areas) || property.areas.length === 0) {
       return res.status(400).json({ ok: false, error: "対象エリアを1つ以上入力してください" });
     }
@@ -101,10 +103,12 @@ app.post("/api/generate", async (req, res) => {
     let propertyLatLng = null;
     let drivetimeUsage = null;
     if (searchMode === "radius" || searchMode === "drivetime") {
-      if (!property.address) {
-        return res.status(400).json({ ok: false, error: "半径・車時間モードには所在地（住所）が必要です" });
+      // 基点は住所優先・無ければ物件名でジオコード（施設名でも解決できることが多い）
+      const origin = property.address || property.name;
+      if (!origin) {
+        return res.status(400).json({ ok: false, error: "半径・車時間モードには住所または物件名（基点）が必要です" });
       }
-      propertyLatLng = await geocodeAddress({ address: property.address, apiKey });
+      propertyLatLng = await geocodeAddress({ address: origin, apiKey });
     }
 
     // Build queries

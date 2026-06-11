@@ -30,13 +30,13 @@
       <h2 class="sidebar-title">物件情報</h2>
       <form id="search-form" class="form">
         <label class="field">
-          <span class="field-label">物件名 <span class="req">必須</span></span>
-          <input type="text" id="f-name" placeholder="例: SOSiLA海老名" required>
+          <span class="field-label">物件名 <span class="req">いずれか必須</span></span>
+          <input type="text" id="f-name" placeholder="例: SOSiLA海老名">
         </label>
         <label class="field" id="field-address">
-          <span class="field-label">所在地（住所）<span id="address-req" class="req" hidden>必須</span></span>
+          <span class="field-label">所在地（住所）<span class="req">いずれか必須</span></span>
           <input type="text" id="f-address" placeholder="例: 神奈川県海老名市中新田5-18-1">
-          <small class="hint" id="address-hint" hidden>このモードでは基点として必須です</small>
+          <small class="hint">物件名・住所のどちらか一方を入力すればOK（両方あると精度UP）。半径・車モードはこの基点で検索します</small>
         </label>
         <label class="field">
           <span class="field-label">物件のフック（USP）</span>
