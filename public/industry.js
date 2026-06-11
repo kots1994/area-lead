@@ -168,7 +168,7 @@ $("search-form").addEventListener("submit", async (e) => {
       const c = u.cost_usd < 0.001 ? `$${(u.cost_usd*1000).toFixed(2)}m` : `$${u.cost_usd.toFixed(4)}`;
       costParts.push(`Claude: ${c}（≈¥${u.cost_jpy}）`);
     }
-    if (costParts.length) countText += `  ―  💰 ${costParts.join(" + ")}`;
+    if (costParts.length) countText += `  ―  ${costParts.join(" + ")}`;
     $("results-count").textContent = countText;
     lastCsvBase64 = data.csv_base64;
     $("btn-csv").hidden = false;
@@ -178,7 +178,7 @@ $("search-form").addEventListener("submit", async (e) => {
   } finally {
     btn.disabled = false;
     btn.querySelector(".btn-spinner").hidden = true;
-    btn.querySelector(".btn-label").textContent = "📡 リスト生成";
+    btn.querySelector(".btn-label").textContent = "リスト生成";
   }
 });
 

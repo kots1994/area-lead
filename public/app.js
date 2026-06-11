@@ -35,7 +35,7 @@ async function api(method, path, body) {
 function setBusy(b, label = "リスト生成") {
   btn.disabled = b;
   spinner.hidden = !b;
-  btnLabel.textContent = b ? "生成中..." : `📡 ${label}`;
+  btnLabel.textContent = b ? "生成中..." : `${label}`;
 }
 function setStatus(msg, type = "") { status.textContent = msg; status.className = "status " + type; }
 function escapeHtml(s) {
@@ -158,7 +158,7 @@ function renderRows(rows) {
         <td><span class="rev-tag">${escapeHtml(r.revenue_rank || "—")}</span></td>
         <td class="cell-name">${escapeHtml(r.name)} ${cnBadge}</td>
         <td class="cell-addr">${escapeHtml(truncate(r.address, 40))}</td>
-        <td class="cell-drive" ${$("th-drive")?.hidden ? 'hidden' : ''}>${r.drive_minutes != null ? `🚗 ${r.drive_minutes}分` : "—"}</td>
+        <td class="cell-drive" ${$("th-drive")?.hidden ? 'hidden' : ''}>${r.drive_minutes != null ? `${r.drive_minutes}分` : "—"}</td>
         <td class="cell-phone">${escapeHtml(r.phone || "—")}</td>
         <td class="cell-web">${r.website ? `<a href="${escapeHtml(r.website)}" target="_blank" rel="noopener">${escapeHtml(truncate(r.website.replace(/^https?:\/\//, ''), 24))}</a>` : "—"}</td>
         <td class="cell-email">${emailHtml}${formBadge ? ' ' + formBadge : ''}</td>
@@ -173,7 +173,7 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const apiKeys = getStoredKeys();
   if (!apiKeys.google_maps) {
-    setStatus("Google Maps API キーが未設定。右上「⚙️ API設定」から登録してください。", "error");
+    setStatus("Google Maps API キーが未設定。右上「API設定」から登録してください。", "error");
     openApiSettings();
     return;
   }
@@ -242,7 +242,7 @@ form.addEventListener("submit", async (e) => {
       const d = data.drivetime_usage;
       costParts.push(`所要時間フィルタ: $${d.cost_usd.toFixed(3)}（≈¥${d.cost_jpy} / ${d.max_minutes}分以内）`);
     }
-    if (costParts.length > 0) countText += `  ―  💰 ${costParts.join(" + ")}`;
+    if (costParts.length > 0) countText += `  ―  ${costParts.join(" + ")}`;
     resultsCount.textContent = countText;
     lastCsvBase64 = data.csv_base64;
     lastProperty = data.property;
@@ -324,7 +324,7 @@ btnSheet?.addEventListener("click", async () => {
   const clientId = localStorage.getItem(KEY_GCLIENT) || "";
   const sheetId = parseSpreadsheetId(localStorage.getItem(KEY_SHEET) || "");
   if (!clientId || !sheetId) {
-    setStatus("Sheet出力には「⚙️ API設定」で OAuthクライアントID と 出力先スプレッドシート の設定が必要です", "error");
+    setStatus("Sheet出力には「API設定」で OAuthクライアントID と 出力先スプレッドシート の設定が必要です", "error");
     openApiSettings();
     return;
   }
