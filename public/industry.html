@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AreaLead — 業種別エマージング検索</title>
-<link rel="stylesheet" href="/style.css?v=4">
+<link rel="stylesheet" href="/style.css?v=5">
 </head>
 <body>
 <div class="app">
@@ -30,24 +30,24 @@
       <form id="search-form" class="form">
         <label class="field">
           <span class="field-label">業界・検索キーワード <span class="req">必須</span></span>
-          <textarea id="f-keywords-free" rows="3" placeholder="例: リース, レンタル, 建機レンタル, 福祉用具, 介護用品&#10;&#10;カンマ・改行区切りで複数入力" required></textarea>
-          <small class="hint">Google Mapsで検索する語句。複数入れるほど網羅性UP（コストも増）</small>
+          <textarea id="f-keywords-free" rows="3" placeholder="例: リース, レンタル, 福祉用具（カンマ/改行区切り）" required></textarea>
+          <small class="hint">検索語句。複数入れるほど網羅性UP（コスト増）</small>
         </label>
 
         <label class="field">
           <span class="field-label">除外したい大手・既知の企業名 <span class="opt">任意</span></span>
           <textarea id="f-exclude-free" rows="4" placeholder="例: SMFLレンタル, 三菱HCキャピタル, 三共リース, 日建リース工業, レンタルのニッケン, ヤマシタ, ニシケン, ダイドードリンコ, アサヒ飲料, 日本酒類販売, カクヤス, 伊藤園"></textarea>
-          <small class="hint">部分一致で社名から除外。エマージング系を抽出できます</small>
+          <small class="hint">社名の部分一致で除外</small>
         </label>
 
         <label class="field">
           <span class="field-label">対象エリア <span class="opt">任意</span></span>
           <div class="chip-input" id="chip-input-wrap">
             <div class="chip-list" id="chip-list"></div>
-            <input type="text" id="chip-text" class="chip-text" placeholder="市町村名を入力 → Enter（空欄で全国検索）">
+            <input type="text" id="chip-text" class="chip-text" placeholder="市町村名 → Enter（空欄で全国）">
           </div>
           <input type="hidden" id="f-areas">
-          <small class="hint">未入力なら全国を対象に検索します</small>
+          <small class="hint">未入力で全国検索</small>
         </label>
 
         <details class="advanced">
@@ -55,14 +55,14 @@
           <label class="field toggle-field">
             <span>
               <strong>Claude API で優先度判定</strong>
-              <small>★★★/★★☆ 評価・売上ランク・推定担当部署を AI 推定</small>
+              <small>評価・売上ランク・担当部署をAI推定</small>
             </span>
             <input type="checkbox" id="f-enrich-ai" checked>
           </label>
           <label class="field toggle-field">
             <span>
               <strong>各社サイトをスクレイプ</strong>
-              <small>メアド・問い合わせフォームURLを自動取得</small>
+              <small>メアド・問い合わせURLを自動取得</small>
             </span>
             <input type="checkbox" id="f-scrape" checked>
           </label>
@@ -117,7 +117,7 @@
     <div class="modal-card">
       <button class="modal-close" id="btn-close-api-settings" aria-label="閉じる">×</button>
       <h2 class="modal-title">API キー設定</h2>
-      <p class="modal-sub">あなたのキーはブラウザの localStorage にのみ保存。サーバー側には保存・ログ記録されません。</p>
+      <p class="modal-sub">キーはブラウザ内のみに保存。サーバーには送信されません。</p>
       <form id="api-settings-form">
         <label class="field">
           <span class="field-label">Google Maps API Key <span class="req">必須</span></span>

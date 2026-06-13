@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AreaLead — 倉庫テナント候補リスト自動生成</title>
-<link rel="stylesheet" href="/style.css?v=3">
+<link rel="stylesheet" href="/style.css?v=5">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -36,16 +36,16 @@
         <label class="field" id="field-address">
           <span class="field-label">所在地（住所）</span>
           <input type="text" id="f-address" placeholder="例: 神奈川県海老名市中新田5-18-1">
-          <small class="hint">物件名・住所・ピンのいずれか1つを入力すればOK。半径・車モードはこの基点で検索します</small>
+          <small class="hint">物件名・住所・ピンのいずれか1つでOK</small>
         </label>
         <label class="field">
           <span class="field-label">Googleマップのピン</span>
           <input type="text" id="f-pin" placeholder="例: https://maps.app.goo.gl/… または 35.4310,139.3823">
-          <small class="hint">Googleマップで物件を右クリック→座標をコピー、または共有リンクを貼り付け。指定すると最優先の基点になります（半径・車モード）</small>
+          <small class="hint">共有リンク or 座標を貼り付け（基点を最優先）</small>
         </label>
         <label class="field">
           <span class="field-label">物件のフック（USP）</span>
-          <textarea id="f-hook" rows="2" placeholder="例: 圏央道海老名IC近接、湘南エリアをカバー、敷地約10,230坪"></textarea>
+          <textarea id="f-hook" rows="2" placeholder="例: 圏央道海老名IC近接、敷地10,230坪"></textarea>
         </label>
         <!-- 検索モード -->
         <div class="field">
@@ -65,7 +65,7 @@
             <input type="text" id="chip-text" class="chip-text" placeholder="市町村名を入力 → Enter">
           </div>
           <input type="hidden" id="f-areas">
-          <small class="hint">Enter またはカンマで追加（同一市町村＋隣接3〜5市町村が目安）</small>
+          <small class="hint">Enter / カンマで追加</small>
         </div>
 
         <!-- 半径モード -->
@@ -75,7 +75,7 @@
             <input type="number" id="f-radius-km" min="1" max="100" value="20" style="width:100%">
             <span class="field-unit">km以内</span>
           </div>
-          <small class="hint">物件住所を基点として円形で検索します</small>
+          <small class="hint">基点から円形で検索</small>
         </div>
 
         <!-- 車○分モード -->
@@ -85,7 +85,7 @@
             <input type="number" id="f-drivetime-min" min="5" max="120" value="30" style="width:100%">
             <span class="field-unit">分以内</span>
           </div>
-          <small class="hint">物件住所を基点として実際の運転時間でフィルタします</small>
+          <small class="hint">基点からの運転時間でフィルタ</small>
         </div>
         <details class="advanced">
           <summary>詳細設定</summary>
@@ -96,14 +96,14 @@
           <label class="field toggle-field">
             <span>
               <strong>Claude API で優先度判定</strong>
-              <small>★★★/★★☆ 評価・売上ランク・推定担当部署を AI 推定</small>
+              <small>評価・売上ランク・担当部署をAI推定</small>
             </span>
             <input type="checkbox" id="f-enrich-ai" checked>
           </label>
           <label class="field toggle-field">
             <span>
               <strong>各社サイトをスクレイプ</strong>
-              <small>メアド・問い合わせフォームURLを自動取得</small>
+              <small>メアド・問い合わせURLを自動取得</small>
             </span>
             <input type="checkbox" id="f-scrape" checked>
           </label>
@@ -158,33 +158,33 @@
     <div class="modal-card">
       <button class="modal-close" id="btn-close-api-settings" aria-label="閉じる">×</button>
       <h2 class="modal-title">API キー設定</h2>
-      <p class="modal-sub">あなたのキーはブラウザの localStorage にのみ保存。サーバー側には保存・ログ記録されません。</p>
+      <p class="modal-sub">キーはブラウザ内のみに保存。サーバーには送信されません。</p>
       <form id="api-settings-form">
         <label class="field">
           <span class="field-label">Google Maps API Key <span class="req">必須</span></span>
           <input type="password" id="key-google" placeholder="AIza..." autocomplete="off">
           <small class="hint">
-            <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank" rel="noopener">Google Cloud Console</a> で発行 / Places API (New) を有効化
+            <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank" rel="noopener">Google Cloud Console</a> で発行
           </small>
         </label>
         <label class="field">
           <span class="field-label">Anthropic Claude API Key <span class="opt">任意</span></span>
           <input type="password" id="key-anthropic" placeholder="sk-ant-..." autocomplete="off">
           <small class="hint">
-            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic Console</a> で発行 / 優先度判定に使用
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic Console</a> で発行（優先度判定用）
           </small>
         </label>
         <label class="field">
           <span class="field-label">Google OAuth クライアントID <span class="opt">Sheet出力用</span></span>
-          <input type="text" id="key-gclient" placeholder="空欄でOK（既定のクライアントIDを使用）" autocomplete="off">
+          <input type="text" id="key-gclient" placeholder="空欄でOK" autocomplete="off">
           <small class="hint">
-            通常は空欄のままでOK。自前のIDを使う場合のみ、<a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">GCP 認証情報</a>で「OAuthクライアントID（ウェブアプリ）」を作成して入力
+            通常は空欄でOK
           </small>
         </label>
         <label class="field">
           <span class="field-label">出力先スプレッドシート <span class="opt">Sheet出力用</span></span>
           <input type="text" id="key-sheet" placeholder="SheetのURL または ID" autocomplete="off">
-          <small class="hint">追加先のGoogle SheetのURLを貼り付け（結果が新しいタブとして追加されます）</small>
+          <small class="hint">結果を新しいタブとして追記</small>
         </label>
         <div class="modal-actions">
           <button type="button" class="btn-secondary" id="btn-clear-keys">クリア</button>
