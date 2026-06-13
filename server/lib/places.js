@@ -72,6 +72,7 @@ const PRICE_PER_REQUEST = 0.035;
 export async function searchTargets({ queries, languageCode = "ja", regionCode = "JP", apiKey, companyKeywords, circle }) {
   const results = new Map();
   let requestCount = 0;
+  let lastError = null;
   for (const q of queries) {
     try {
       const places = await textSearchOne({ query: q, languageCode, regionCode, apiKey, circle });
@@ -81,8 +82,19 @@ export async function searchTargets({ queries, languageCode = "ja", regionCode =
         if (!results.has(p.id)) results.set(p.id, p);
       }
     } catch (e) {
+      lastError = e;
       console.warn(`[Places] query failed: "${q}" → ${e.message}`);
     }
+  }
+  // 全クエリが失敗（成功リクエスト0）なら握りつぶさず原因を表に出す。
+  // ほぼ キー無効 / Places API (New) 未有効化 / キー制限 が原因。
+  if (requestCount === 0 && queries.length > 0 && lastError) {
+    const m = lastError.message || "";
+    let hint = "";
+    if (/API key not valid|API_KEY_INVALID/i.test(m)) hint = "（Google Maps APIキーが正しくありません）";
+    else if (/SERVICE_DISABLED|has not been used|is disabled/i.test(m)) hint = "（Google Cloud で『Places API (New)』を有効化してください）";
+    else if (/referer|referrer|HTTP_REFERRER/i.test(m)) hint = "（キーのHTTPリファラー制限を解除/IP制限に変更してください。サーバー側から呼ぶため）";
+    throw new Error(`企業検索に失敗しました${hint}: ${m.slice(0, 200)}`);
   }
   const all = [...results.values()].map(normalizePlace);
   let filtered = all;
