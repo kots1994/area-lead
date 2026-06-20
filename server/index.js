@@ -15,6 +15,7 @@ import { enrichWithClaude } from "./lib/claude.js";
 import { geocodeAddress } from "./lib/geocode.js";
 import { filterByDrivetime } from "./lib/drivetime.js";
 import { resolvePin } from "./lib/pin.js";
+import { scanRoofs } from "./lib/roofscan.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -250,6 +251,37 @@ app.post("/api/generate", async (req, res) => {
   } catch (e) {
     console.error("[AreaLead] generate error", e);
     res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+// ─── 航空写真から倉庫っぽい大屋根を検出（Claude Vision）───
+app.post("/api/roofscan", async (req, res) => {
+  const { apiKeys = {}, center = {}, zoom = 17, minAreaSqm = 1000 } = req.body || {};
+  const apiKey = apiKeys.google_maps || process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) return res.status(400).json({ ok: false, error: "Google Maps API キーが必要です", needApiKey: true });
+  if (!apiKeys.anthropic) return res.status(400).json({ ok: false, error: "屋根検出には Anthropic Claude API キーが必要です（API設定から登録）", needApiKey: true });
+  try {
+    // 中心の解決: ピン(URL/座標) → 住所 でジオコード
+    let latLng = null;
+    if (center.pin) {
+      latLng = await resolvePin(center.pin);
+      if (!latLng) return res.status(400).json({ ok: false, error: "ピンを解析できませんでした（共有リンク or 緯度,経度）" });
+    } else if (center.address) {
+      latLng = await geocodeAddress({ address: center.address, apiKey });
+    } else if (typeof center.lat === "number" && typeof center.lng === "number") {
+      latLng = { lat: center.lat, lng: center.lng };
+    } else {
+      return res.status(400).json({ ok: false, error: "中心地点（ピン・住所・座標のいずれか）が必要です" });
+    }
+    const z = Math.min(Math.max(parseInt(zoom, 10) || 17, 14), 20);
+    const minA = Math.max(parseInt(minAreaSqm, 10) || 0, 0);
+    const result = await scanRoofs({
+      apiKey, anthropicKey: apiKeys.anthropic,
+      lat: latLng.lat, lng: latLng.lng, zoom: z, minAreaSqm: minA,
+    });
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message || "roofscan failed" });
   }
 });
 

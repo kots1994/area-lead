@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AreaLead — 航空写真から倉庫検出</title>
+<link rel="stylesheet" href="/style.css?v=5">
+<style>
+  .roof-stage { position: relative; display: inline-block; max-width: 100%; }
+  .roof-stage img { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .roof-box { position: absolute; border: 2px solid #2563eb; box-shadow: 0 0 0 1px rgba(255,255,255,.6) inset; border-radius: 2px; cursor: pointer; }
+  .roof-box.sel { border-color: #f59e0b; }
+  .roof-tag { position: absolute; top: -1px; left: -1px; background: #2563eb; color: #fff; font-size: 11px; font-weight: 700; padding: 1px 5px; border-radius: 2px; }
+  .roof-box.sel .roof-tag { background: #f59e0b; }
+  .roof-layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .roof-layout { grid-template-columns: 1fr; } }
+  tr.roof-row.sel td { background: #fff7ed; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div>
+        <div class="brand-name">AreaLead</div>
+        <div class="brand-sub">航空写真から倉庫候補を検出</div>
+      </div>
+    </div>
+    <nav class="tab-nav">
+      <a href="/" class="tab-link">物件×テナント</a>
+      <a href="/industry.html" class="tab-link">業種別エマージング検索</a>
+      <a href="/roofscan.html" class="tab-link active">航空写真から倉庫検出</a>
+    </nav>
+    <div class="header-plan">
+      <button id="btn-open-api-settings" class="user-logout" title="API設定">API設定</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <aside class="sidebar">
+      <h2 class="sidebar-title">検出条件</h2>
+      <form id="scan-form" class="form">
+        <label class="field">
+          <span class="field-label">中心地点（住所・ピン・座標）</span>
+          <input type="text" id="f-center" placeholder="例: 神奈川県相模原市… / 35.4310,139.3823 / 共有リンク">
+          <small class="hint">この地点を中心に航空写真をAI解析します</small>
+        </label>
+        <label class="field">
+          <span class="field-label">ズーム（範囲）</span>
+          <div class="row-2">
+            <input type="range" id="f-zoom" min="14" max="19" value="17" style="width:100%">
+            <span class="field-unit"><span id="zoom-val">17</span></span>
+          </div>
+          <small class="hint" id="coverage-hint">数字が小さいほど広範囲（粗い）／大きいほど狭く詳細</small>
+        </label>
+        <label class="field">
+          <span class="field-label">最小屋根面積（㎡）</span>
+          <div class="row-2">
+            <input type="number" id="f-minarea" min="0" step="100" value="1000" style="width:100%">
+            <span class="field-unit">㎡以上</span>
+          </div>
+          <small class="hint">これ未満の小さい屋根は除外（1000㎡≒302坪）</small>
+        </label>
+        <button type="submit" class="btn-primary" id="btn-scan">
+          <span class="btn-spinner" hidden></span>
+          <span class="btn-label">航空写真を解析</span>
+        </button>
+        <div class="status" id="status"></div>
+        <small class="hint">Google Static Maps の衛星画像を Claude Vision が解析し、倉庫っぽい大屋根を検出。位置・面積は概算で、現地/Mapsでの確認前提です。</small>
+      </form>
+    </aside>
+
+    <section class="results">
+      <div class="results-header">
+        <h2 id="results-title">結果</h2>
+        <div class="results-actions">
+          <span class="results-count" id="results-count"></span>
+          <button class="btn-secondary" id="btn-csv" hidden>CSVダウンロード</button>
+          <button class="btn-secondary" id="btn-sheet" hidden>Sheetに追加</button>
+        </div>
+      </div>
+      <div class="roof-layout">
+        <div>
+          <div class="roof-stage" id="roof-stage"></div>
+        </div>
+        <div class="results-table-wrap">
+          <table class="results-table" id="results-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>推定面積</th>
+                <th>名称（近傍）</th>
+                <th>住所</th>
+                <th>確信度</th>
+                <th>Maps</th>
+              </tr>
+            </thead>
+            <tbody id="results-body">
+              <tr class="empty"><td colspan="6">
+                <div class="empty-state">
+                  <h3>中心地点を入れて「航空写真を解析」を押してください</h3>
+                  <p>Google Maps + Anthropic Claude のキーが必要です（API設定）。</p>
+                </div>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- API settings modal -->
+  <div id="api-settings-modal" class="modal-overlay" hidden>
+    <div class="modal-card">
+      <button class="modal-close" id="btn-close-api-settings" aria-label="閉じる">×</button>
+      <h2 class="modal-title">API キー設定</h2>
+      <p class="modal-sub">キーはブラウザ内のみに保存。サーバーには送信されません。</p>
+      <form id="api-settings-form">
+        <label class="field">
+          <span class="field-label">Google Maps API Key <span class="req">必須</span></span>
+          <input type="password" id="key-google" placeholder="AIza..." autocomplete="off">
+          <small class="hint">Places API (New) / Geocoding API / Maps Static API を有効化</small>
+        </label>
+        <label class="field">
+          <span class="field-label">Anthropic Claude API Key <span class="req">必須</span></span>
+          <input type="password" id="key-anthropic" placeholder="sk-ant-..." autocomplete="off">
+          <small class="hint">屋根の画像解析（Vision）に使用</small>
+        </label>
+        <label class="field">
+          <span class="field-label">出力先スプレッドシート <span class="opt">Sheet出力用</span></span>
+          <input type="text" id="key-sheet" placeholder="SheetのURL または ID" autocomplete="off">
+          <small class="hint">結果を新しいタブとして追記</small>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="btn-clear-keys">クリア</button>
+          <button type="submit" class="btn-primary">保存</button>
+        </div>
+        <div class="modal-status" id="api-settings-status"></div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-right">v0.3.0 · BYOK</div>
+  </footer>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="/roofscan.js?v=1"></script>
+</body>
+</html>
