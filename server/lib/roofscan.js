@@ -21,8 +21,9 @@ async function fetchSatellite({ lat, lng, zoom, apiKey, sizePx = 640, scale = 2 
   if (!resp.ok) {
     const t = await resp.text();
     let hint = "";
-    if (/not authorized|REQUEST_DENIED|disabled/i.test(t)) hint = "（Google Cloud で『Maps Static API』を有効化してください）";
-    else if (/keyInvalid|API key/i.test(t)) hint = "（Google Maps APIキーが正しくありません）";
+    if (/not activated|not authorized|enable this API|REQUEST_DENIED|SERVICE_DISABLED|disabled/i.test(t)) hint = "（Google Cloud で『Maps Static API』を有効化してください）";
+    else if (/keyInvalid|API key not valid|API key/i.test(t)) hint = "（Google Maps APIキーが正しくありません）";
+    else if (/referer|referrer|HTTP_REFERRER/i.test(t)) hint = "（キーのHTTPリファラー制限を解除/IP制限に変更してください）";
     throw new Error(`航空写真の取得に失敗${hint}: ${resp.status} ${t.slice(0, 150)}`);
   }
   const buf = Buffer.from(await resp.arrayBuffer());
