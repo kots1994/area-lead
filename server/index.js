@@ -125,17 +125,16 @@ app.post("/api/generate", async (req, res) => {
     // Build queries
     const queries = [];
     const industryMode = options.industryMode === true;
-    if (industryMode) {
-      // 業種別検索: areas が指定されていればエリア×キーワード、空なら全国検索（キーワードのみ）
-      const realAreas = areas.filter((a) => a !== "全国");
-      for (const kw of enabledKeywords) {
-        queries.push(kw);
-        for (const area of realAreas) queries.push(`${area} ${kw}`);
-      }
-    } else if (searchMode === "area") {
-      for (const kw of enabledKeywords) {
-        queries.push(kw);
-        for (const area of areas) queries.push(`${area} ${kw}`);
+    const realAreas = areas.filter((a) => a && a !== "全国");
+    if (industryMode || searchMode === "area") {
+      if (realAreas.length > 0) {
+        // エリアが指定されていれば「エリア×キーワード」のみ（全国ノイズを避ける）
+        for (const kw of enabledKeywords) {
+          for (const area of realAreas) queries.push(`${area} ${kw}`);
+        }
+      } else {
+        // エリア未指定（業種別の全国検索）はキーワードのみ
+        for (const kw of enabledKeywords) queries.push(kw);
       }
     } else {
       // radius / drivetime: keyword-only queries (circle restriction handles geography)
@@ -171,6 +170,20 @@ app.post("/api/generate", async (req, res) => {
         const nl = (p.name || "").toLowerCase();
         return !excludeLower.some((ex) => nl.includes(ex.toLowerCase()));
       });
+    }
+
+    // エリア厳格フィルタ: 指定エリアが住所に含まれる物件だけ残す（宮城/埼玉等の混入を排除）
+    // radius/drivetime は円で地理を絞るため対象外。
+    if (searchMode === "area" && realAreas.length > 0) {
+      const tokens = realAreas
+        .map((a) => a.replace(/[都道府県市区町村郡]$/, "")) // 「神奈川県」→「神奈川」「横浜市」→「横浜」
+        .filter((t) => t.length >= 2);
+      if (tokens.length > 0) {
+        places = places.filter((p) => {
+          const addr = p.address || "";
+          return tokens.some((t) => addr.includes(t));
+        });
+      }
     }
 
     const MAX_TO_ENRICH = Math.min(Math.max(parseInt(options.maxResults, 10) || 150, 1), 300);
