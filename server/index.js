@@ -186,7 +186,7 @@ app.post("/api/generate", async (req, res) => {
       }
     }
 
-    const MAX_TO_ENRICH = Math.min(Math.max(parseInt(options.maxResults, 10) || 150, 1), 300);
+    const MAX_TO_ENRICH = Math.min(Math.max(parseInt(options.maxResults, 10) || 300, 1), 500);
     const truncated = places.length > MAX_TO_ENRICH;
     let placesForEnrich = places.slice(0, MAX_TO_ENRICH);
 
