@@ -173,7 +173,8 @@ app.post("/api/generate", async (req, res) => {
       });
     }
 
-    const MAX_TO_ENRICH = 60;
+    const MAX_TO_ENRICH = Math.min(Math.max(parseInt(options.maxResults, 10) || 150, 1), 300);
+    const truncated = places.length > MAX_TO_ENRICH;
     let placesForEnrich = places.slice(0, MAX_TO_ENRICH);
 
     let enriched = placesForEnrich;
@@ -241,6 +242,8 @@ app.post("/api/generate", async (req, res) => {
         found: places.length,
         enriched_with_claude: usedClaude ? enriched.length : 0,
         returned: enriched.length,
+        truncated,
+        cap: MAX_TO_ENRICH,
       },
       maps_usage: mapsUsage,
       claude_usage: claudeUsage,

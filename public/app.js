@@ -228,6 +228,7 @@ form.addEventListener("submit", async (e) => {
     }
     renderRows(data.rows);
     let countText = `${data.counts.returned}社（元データ ${data.counts.found}社）`;
+    if (data.counts.truncated) countText += `  ※上位${data.counts.cap}件に絞込`;
     const costParts = [];
     if (data.maps_usage) {
       const m = data.maps_usage;

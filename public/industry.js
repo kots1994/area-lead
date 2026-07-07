@@ -161,6 +161,7 @@ $("search-form").addEventListener("submit", async (e) => {
     }
     renderRows(data.rows);
     let countText = `${data.counts.returned}社（元データ ${data.counts.found}社）`;
+    if (data.counts.truncated) countText += `  ※上位${data.counts.cap}件に絞込（検索語やエリアを増やすと網羅性UP）`;
     const costParts = [];
     if (data.maps_usage) costParts.push(`Google Maps: $${data.maps_usage.cost_usd.toFixed(3)}（≈¥${data.maps_usage.cost_jpy} / ${data.maps_usage.request_count}リク）`);
     if (data.claude_usage) {

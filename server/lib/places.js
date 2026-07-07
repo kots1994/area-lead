@@ -17,9 +17,10 @@ const FIELD_MASK = [
   "places.location",
 ].join(",");
 
-async function textSearchOne({ query, languageCode, regionCode, apiKey, pageSize = 20, circle }) {
+async function textSearchOne({ query, languageCode, regionCode, apiKey, pageSize = 20, circle, pageToken }) {
   const body = { textQuery: query, languageCode, pageSize };
   if (regionCode) body.regionCode = regionCode;
+  if (pageToken) body.pageToken = pageToken;
   if (circle) {
     // Places API (New) の locationRestriction は rectangle のみ対応（circle 不可）。
     // 中心＋半径から外接する矩形を作って絞り込む（厳密な円は後段で距離フィルタ）。
@@ -37,7 +38,7 @@ async function textSearchOne({ query, languageCode, regionCode, apiKey, pageSize
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": FIELD_MASK,
+      "X-Goog-FieldMask": FIELD_MASK + ",nextPageToken",
     },
     body: JSON.stringify(body),
   });
@@ -46,7 +47,7 @@ async function textSearchOne({ query, languageCode, regionCode, apiKey, pageSize
     throw new Error(`Places API ${resp.status}: ${t.slice(0, 200)}`);
   }
   const data = await resp.json();
-  return data.places || [];
+  return { places: data.places || [], nextPageToken: data.nextPageToken || null };
 }
 
 export function normalizePlace(p) {
@@ -84,21 +85,30 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
-export async function searchTargets({ queries, languageCode = "ja", regionCode = "JP", apiKey, companyKeywords, circle }) {
+export async function searchTargets({ queries, languageCode = "ja", regionCode = "JP", apiKey, companyKeywords, circle, maxPagesPerQuery = 3 }) {
   const results = new Map();
   let requestCount = 0;
   let lastError = null;
   for (const q of queries) {
-    try {
-      const places = await textSearchOne({ query: q, languageCode, regionCode, apiKey, circle });
-      requestCount++;
-      for (const p of places) {
-        if (!p.id) continue;
-        if (!results.has(p.id)) results.set(p.id, p);
+    // 1クエリあたり最大 maxPagesPerQuery ページ（20件×3=最大60件）をページネーションで取得
+    let pageToken = null;
+    for (let page = 0; page < maxPagesPerQuery; page++) {
+      try {
+        const { places, nextPageToken } = await textSearchOne({ query: q, languageCode, regionCode, apiKey, circle, pageToken });
+        requestCount++;
+        for (const p of places) {
+          if (!p.id) continue;
+          if (!results.has(p.id)) results.set(p.id, p);
+        }
+        if (!nextPageToken) break;
+        pageToken = nextPageToken;
+        // 次ページトークンが有効になるまで少し待つ（Places API の仕様）
+        await new Promise((r) => setTimeout(r, 400));
+      } catch (e) {
+        lastError = e;
+        console.warn(`[Places] query failed: "${q}" (page ${page}) → ${e.message}`);
+        break;
       }
-    } catch (e) {
-      lastError = e;
-      console.warn(`[Places] query failed: "${q}" → ${e.message}`);
     }
   }
   // 全クエリが失敗（成功リクエスト0）なら握りつぶさず原因を表に出す。
