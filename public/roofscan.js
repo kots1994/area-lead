@@ -49,6 +49,7 @@ $("btn-clear-keys")?.addEventListener("click", () => {
 
 // ─── ズーム表示 ───
 $("f-zoom").addEventListener("input", () => { $("zoom-val").textContent = $("f-zoom").value; });
+$("f-minconf")?.addEventListener("input", () => { $("minconf-val").textContent = $("f-minconf").value; });
 
 // ─── 描画 ───
 function renderResults(data) {
@@ -126,6 +127,7 @@ $("scan-form").addEventListener("submit", async (e) => {
     center: isPin ? { pin: center } : { address: center },
     zoom: +$("f-zoom").value,
     minAreaSqm: +$("f-minarea").value || 0,
+    minConfidence: ($("f-minconf") ? +$("f-minconf").value : 50) / 100,
   };
   setBusy(true);
   setStatus("航空写真を取得して Claude が解析中...", "info");
