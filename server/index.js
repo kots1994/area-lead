@@ -272,7 +272,7 @@ app.post("/api/generate", async (req, res) => {
 
 // ─── 航空写真から倉庫っぽい大屋根を検出（Claude Vision）───
 app.post("/api/roofscan", async (req, res) => {
-  const { apiKeys = {}, center = {}, zoom = 17, minAreaSqm = 1000 } = req.body || {};
+  const { apiKeys = {}, center = {}, zoom = 17, minAreaSqm = 1000, minConfidence = 0.5 } = req.body || {};
   const apiKey = apiKeys.google_maps || process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) return res.status(400).json({ ok: false, error: "Google Maps API キーが必要です", needApiKey: true });
   if (!apiKeys.anthropic) return res.status(400).json({ ok: false, error: "屋根検出には Anthropic Claude API キーが必要です（API設定から登録）", needApiKey: true });
@@ -291,9 +291,10 @@ app.post("/api/roofscan", async (req, res) => {
     }
     const z = Math.min(Math.max(parseInt(zoom, 10) || 17, 14), 20);
     const minA = Math.max(parseInt(minAreaSqm, 10) || 0, 0);
+    const minConf = Math.min(Math.max(Number(minConfidence) || 0, 0), 1);
     const result = await scanRoofs({
       apiKey, anthropicKey: apiKeys.anthropic,
-      lat: latLng.lat, lng: latLng.lng, zoom: z, minAreaSqm: minA,
+      lat: latLng.lat, lng: latLng.lng, zoom: z, minAreaSqm: minA, minConfidence: minConf,
     });
     res.json({ ok: true, ...result });
   } catch (e) {

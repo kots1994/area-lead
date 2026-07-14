@@ -61,6 +61,14 @@
           </div>
           <small class="hint">これ未満の小さい屋根は除外（1000㎡≒302坪）</small>
         </label>
+        <label class="field">
+          <span class="field-label">確信度しきい値</span>
+          <div class="row-2">
+            <input type="range" id="f-minconf" min="0" max="90" step="5" value="50" style="width:100%">
+            <span class="field-unit"><span id="minconf-val">50</span>%以上</span>
+          </div>
+          <small class="hint">高いほど誤検出（住宅・店舗）を除外。取りこぼす時は下げる</small>
+        </label>
         <button type="submit" class="btn-primary" id="btn-scan">
           <span class="btn-spinner" hidden></span>
           <span class="btn-label">航空写真を解析</span>
